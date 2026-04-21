@@ -28,6 +28,16 @@ npm run build
 npm run verify
 ```
 
+## CI
+
+GitHub Actions runs on pushes to `main` and pull requests targeting `main`.
+
+The workflow installs with `npm ci` and then runs:
+
+- `npm run lint`
+- `npm run build`
+- `npm run verify`
+
 ## Editing the catalog
 
 Edit `src/data/apps.ts` to add or update apps.
