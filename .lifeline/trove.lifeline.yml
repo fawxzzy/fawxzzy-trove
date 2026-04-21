@@ -4,9 +4,12 @@ repo: https://github.com/fawxzzy/fawxzzy-trove.git
 branch: codex/trove-one-page-cleanup
 installCommand: npm ci
 buildCommand: npm run build
-startCommand: npm run start
+startCommand: node scripts/start-static.mjs --port 3000
 port: 3000
 healthcheckPath: /healthz.json
+env:
+  mode: inline
+  requiredKeys: []
 deploy:
   strategy: rebuild
   workingDirectory: ..

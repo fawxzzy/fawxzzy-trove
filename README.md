@@ -31,7 +31,7 @@ npm run smoke:lifeline
 npm run verify
 ```
 
-`npm run start` serves the static export from `out/` on port `3000`.
+`npm run start` serves the static export from `out/` on port `3000` through the checked-in exact-port static server.
 `npm run smoke:lifeline` serves the static export and checks `/`, `/healthz.json`, and `manifest.webmanifest`.
 
 ## Catalog contract

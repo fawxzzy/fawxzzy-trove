@@ -5,25 +5,15 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
-const serveEntrypoint = path.join(
-  repoRoot,
-  "node_modules",
-  "serve",
-  "build",
-  "main.js",
-);
+const startEntrypoint = path.join(repoRoot, "scripts", "start-static.mjs");
 const port = 3210;
 const baseUrl = `http://127.0.0.1:${port}`;
 
 function startServer() {
-  return spawn(
-    process.execPath,
-    [serveEntrypoint, "out", "--listen", `tcp://127.0.0.1:${port}`],
-    {
-      cwd: repoRoot,
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  );
+  return spawn(process.execPath, [startEntrypoint, "--host", "127.0.0.1", "--port", `${port}`], {
+    cwd: repoRoot,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 }
 
 async function waitFor(url) {
@@ -70,9 +60,13 @@ async function stopServer(server) {
 async function main() {
   const server = startServer();
   let stderr = "";
+  let stdout = "";
 
   server.stderr.on("data", (chunk) => {
     stderr += chunk.toString();
+  });
+  server.stdout.on("data", (chunk) => {
+    stdout += chunk.toString();
   });
 
   try {
@@ -103,7 +97,7 @@ async function main() {
     server.exitCode !== 0 &&
     server.exitCode !== 130
   ) {
-    throw new Error(stderr || `serve exited with code ${server.exitCode}`);
+    throw new Error(stderr || stdout || `server exited with code ${server.exitCode}`);
   }
 }
 

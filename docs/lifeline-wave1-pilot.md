@@ -11,6 +11,7 @@ This repo carries the Trove-side contract for the Wave 1 pilot cutover. The goal
 - Lifeline health path: `/healthz.json`
 
 The app remains a static-export Next.js surface. `npm run build` emits the export, and `serve` hosts the built `out/` directory on port `3000`.
+The checked-in runtime entrypoint is `node scripts/start-static.mjs --port 3000`, which fails closed if the pinned port is unavailable instead of silently rebinding.
 
 ## Container path
 
@@ -40,7 +41,7 @@ No Vercel runtime env is required for the pilot path.
 - Repo-local smoke command: `npm run smoke:lifeline`
 - Repo-local verify command: `npm run verify`
 
-`npm run smoke:lifeline` serves the exported `out/` directory, confirms `/` renders the Trove shell, validates `/healthz.json`, and checks that `manifest.webmanifest` remains reachable.
+`npm run smoke:lifeline` serves the exported `out/` directory through the checked-in static server, confirms `/` renders the Trove shell, validates `/healthz.json`, and checks that `manifest.webmanifest` remains reachable.
 
 ## Deploy against pinned Lifeline floors
 
