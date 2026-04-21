@@ -1,0 +1,7 @@
+.git
+.gitignore
+.next
+.vercel
+node_modules
+out
+npm-debug.log*

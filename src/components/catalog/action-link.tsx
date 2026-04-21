@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { CatalogAction } from "@/lib/catalog";
 
 type ActionLinkProps = {
@@ -8,7 +7,6 @@ type ActionLinkProps = {
 const emphasisClassName: Record<CatalogAction["emphasis"], string> = {
   primary: "catalog-button catalog-button--primary",
   secondary: "catalog-button catalog-button--secondary",
-  ghost: "catalog-button catalog-button--ghost",
 };
 
 export function ActionLink({ action }: ActionLinkProps) {
@@ -16,6 +14,10 @@ export function ActionLink({ action }: ActionLinkProps) {
     action.kind === "disabled"
       ? "catalog-button catalog-button--disabled"
       : emphasisClassName[action.emphasis];
+  const externalProps =
+    action.navigation === "new-tab"
+      ? { target: "_blank", rel: "noreferrer" }
+      : {};
 
   if (action.kind === "disabled" || !action.href) {
     return (
@@ -27,20 +29,15 @@ export function ActionLink({ action }: ActionLinkProps) {
 
   if (action.kind === "external") {
     return (
-      <a
-        className={className}
-        href={action.href}
-        target="_blank"
-        rel="noreferrer"
-      >
+      <a className={className} href={action.href} {...externalProps}>
         {action.label}
       </a>
     );
   }
 
   return (
-    <Link className={className} href={action.href}>
+    <a className={className} href={action.href} {...externalProps}>
       {action.label}
-    </Link>
+    </a>
   );
 }

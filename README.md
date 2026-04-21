@@ -1,14 +1,15 @@
 # Trove
 
-Trove is the app-catalog layer for the Fawxzzy stack. It presents grounded app metadata, links users into each app's own origin, and keeps install guidance truthful for independent PWAs.
+Trove is the one-page storefront for the live Fawxzzy apps.
 
-## Product rule
+It keeps the catalog simple:
 
-Trove does not trigger another app's browser install prompt. The install surface belongs to the app the user is currently visiting, so Trove only does three things:
-
-- link to the app when a grounded live URL exists
-- explain install strategy on each app detail page
-- keep unknown or non-live apps in a safe non-live state
+- grounded launch URLs only
+- app-owned install flow only
+- mobile-first CTA hierarchy surfaces the primary truthful action before long supporting copy
+- inline screenshot rails on `/`
+- no detail pages
+- no repo-facing CTA clutter
 
 ## Local development
 
@@ -25,100 +26,108 @@ Open `http://localhost:3000`.
 npm run dev
 npm run lint
 npm run build
+npm run start
+npm run smoke:lifeline
 npm run verify
 ```
 
-## CI
+`npm run start` serves the static export from `out/` on port `3000` through the checked-in exact-port static server.
+`npm run smoke:lifeline` serves the static export and checks `/`, `/healthz.json`, and `manifest.webmanifest`.
 
-GitHub Actions runs on pushes to `main` and pull requests targeting `main`.
+## Catalog contract
 
-The workflow installs with `npm ci` and then runs:
+Update `src/data/apps.ts` when the storefront changes.
 
-- `npm run lint`
-- `npm run build`
-- `npm run verify`
+Each app entry now owns:
 
-## Vercel operator notes
+- grounded `liveUrl`
+- optional `installUrl`
+- remote icon source
+- local screenshot rail entries
+- short consumer-facing copy and tags
 
-Trove is prepared for a local-first Vercel CLI workflow. The repo keeps Git-triggered Vercel deploys disabled in `vercel.json`, and `_stack` already points at the approved Trove preview, prebuilt, and production command surfaces.
+Install buttons are same-tab handoffs into the app's own origin. Trove appends
+`?install=1` to the grounded install URL, or falls back to the grounded live URL
+when a separate install URL is not available.
 
-### Manual binding steps
+## Grounding live URLs
 
-Linking Trove to a real Vercel project is still manual:
+Do not guess app domains.
 
-```bash
-pnpm dlx vercel --cwd . link --yes --project <name-or-id> --scope <team>
-pnpm dlx vercel --cwd . open
-```
+Current grounded URLs:
 
-Pulling local Vercel project settings and environment variables is also manual:
+- Fitness: `https://fawxzzy-fitness-local.vercel.app`
+- Mazer: `https://fawxzzy-mazer.vercel.app`
 
-```bash
-pnpm dlx vercel --cwd . pull
-pnpm dlx vercel --cwd . pull .env.production.local --environment=production
-```
+Grounding rule:
 
-### After linking
+1. Use a real attached custom domain if Vercel confirms it.
+2. Otherwise use the stable project `.vercel.app` production URL.
+3. If neither exists, omit the live CTA.
 
-Once the repo is linked to the correct Vercel project, the approved operator path stays in `_stack`:
+`https://fitness.fawxzzy.com/` is intentionally not used.
 
-- `pnpm run trove:verify`
-- `pnpm run trove:deploy:preview`
-- `pnpm run trove:build:vercel`
-- `pnpm run trove:deploy:prebuilt`
-- `pnpm run trove:deploy:prod`
-- `pnpm run trove:deploy:prebuilt:prod`
+## Icon sourcing
 
-### Never commit local Vercel state
+Trove does not keep repo-owned canonical app icons anymore.
 
-Keep these local-only:
+Current icon sources:
+
+- Fitness: `https://fawxzzy-fitness-local.vercel.app/app/icon-192.png`
+- Mazer: `https://fawxzzy-mazer.vercel.app/icons/mazer-emblem.svg`
+
+Those paths are owned by the app repos and stay in sync with the live apps.
+
+## Screenshot refresh
+
+Screenshots are committed under `public/apps/<slug>/screenshots/`.
+
+Current capture sources:
+
+- Fitness:
+  - `/`
+  - `/login`
+  - `/signup`
+- Mazer:
+  - `/?content=core-only`
+  - `/?content=core-only&mode=play`
+  - `/?content=core-only&theme=ember`
+
+Refresh workflow:
+
+1. Capture from the live app origin when the public surface is available.
+2. Fall back to a grounded local preview only if the live surface is unavailable.
+3. Replace the screenshot files in the matching `public/apps/<slug>/screenshots/` folder.
+4. Keep captions in `src/data/apps.ts` aligned with the captured routes.
+
+Headless Edge was used for the current capture set.
+
+## Static export
+
+Trove is intentionally configured as a static export in `next.config.ts`.
+
+Keep the catalog compatible with export:
+
+- do not reintroduce dynamic app detail routes
+- avoid server-only runtime behavior on `/`
+- keep the catalog content build-time static
+
+## Lifeline pilot
+
+Wave 1 pilot cutover files live in:
+
+- `.lifeline/trove.lifeline.yml`
+- `.lifeline/wave1-deploy.manifest.json`
+- `docs/lifeline-wave1-pilot.md`
+
+Those files pin Trove to the current Lifeline runtime and deploy contract without widening Trove into a platform repo.
+
+## Local-only files
+
+Never commit:
 
 - `.vercel/`
 - `.env.local`
 - `.env.production.local`
-- any pulled env files, tokens, or machine-local project linkage state
-
-### Where grounded URLs belong
-
-- Do not commit ad hoc preview URLs from one-off deploys.
-- Once Trove has a real stack-managed public hostname or preview hostname contract, record that in the stack topology source of truth first.
-- For Atlas-managed public environment hints, `_stack` already treats `repos/fawxzzy-atlas/docs/LIFELINE_TOPOLOGY_MANIFEST.json` as the read-only topology contract.
-- Trove should only expose grounded app URLs in `src/data/apps.ts` after that upstream stack evidence exists.
-
-## Editing the catalog
-
-Edit `src/data/apps.ts` to add or update apps.
-
-Each entry supports:
-
-- `name`
-- `slug`
-- `description`
-- `icon`
-- `heroImage`
-- `status`
-- `appUrl`
-- `repoUrl`
-- `tags`
-- `accent`
-- `platforms`
-- `installStrategy`
-- `installNotes`
-- `featured`
-- grounded evidence notes used to keep live claims honest
-
-## CTA model
-
-Trove exposes only truthful states:
-
-- `Open app` when a grounded app URL exists
-- `Install in app` when the app owns the install flow and Trove can explain or route into it honestly
-- `View details` when more context is needed or the app is not publicly reachable
-- `Source repo` when a grounded repo remote exists
-- `Coming soon` when there is no safe live destination yet
-
-## Placeholder values that still need future binding
-
-- Mazer currently has grounded repo truth and local install evidence, but no grounded public production URL in local stack files.
-- Stream has grounded repo-local product doctrine, but no grounded public URL or Git remote in local stack files.
-- Trove now has a real Vercel project and deploy path, but `.vercel/`, pulled env files, and any secret-bearing local linkage state remain local-only and uncommitted.
+- pulled env files
+- machine-local Vercel linkage state

@@ -1,11 +1,13 @@
 import type { MetadataRoute } from "next";
 
+export const dynamic = "force-static";
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Trove",
     short_name: "Trove",
     description:
-      "A grounded catalog for Fawxzzy applications with truthful open and install routes.",
+      "A one-page storefront for live Fawxzzy apps with grounded launch links and app-owned install flow.",
     start_url: "/",
     display: "standalone",
     background_color: "#060c15",

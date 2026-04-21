@@ -1,106 +1,45 @@
-import type { CatalogApp } from "@/data/apps";
+import type { CatalogActionLabel, CatalogApp } from "@/data/apps";
 
 export type CatalogAction = {
-  label: string;
+  label: CatalogActionLabel;
   href: string | null;
-  kind: "internal" | "external" | "disabled";
-  emphasis: "primary" | "secondary" | "ghost";
+  kind: "external" | "disabled";
+  emphasis: "primary" | "secondary";
+  navigation: "same-tab" | "new-tab";
 };
 
-function detailHref(app: CatalogApp) {
-  return `/apps/${app.slug}`;
+const INSTALL_INTENT_PARAM = "install";
+const INSTALL_INTENT_VALUE = "1";
+
+function buildInstallHref(installUrl: string | null, liveUrl: string) {
+  const sourceUrl = installUrl ?? liveUrl;
+
+  try {
+    const url = new URL(sourceUrl);
+    url.searchParams.set(INSTALL_INTENT_PARAM, INSTALL_INTENT_VALUE);
+    return url.toString();
+  } catch {
+    return sourceUrl;
+  }
 }
 
-export function getCardActions(app: CatalogApp) {
-  const primary: CatalogAction = app.appUrl
-    ? {
-        label: "Open app",
-        href: app.appUrl,
-        kind: "external",
-        emphasis: "primary",
-      }
-    : app.status === "coming-soon"
-      ? {
-          label: "Coming soon",
-          href: null,
-          kind: "disabled",
-          emphasis: "primary",
-        }
-      : {
-          label: "View details",
-          href: detailHref(app),
-          kind: "internal",
-          emphasis: "primary",
-        };
-
-  const secondary: CatalogAction[] = [];
-
-  if (app.installStrategy === "install-in-app") {
-    secondary.push({
-      label: "Install in app",
-      href: `${detailHref(app)}#install`,
-      kind: "internal",
-      emphasis: "secondary",
-    });
-  }
-
-  if (app.repoUrl) {
-    secondary.push({
-      label: "Source repo",
-      href: app.repoUrl,
+export function getAppActions(app: CatalogApp) {
+  const actions: CatalogAction[] = [
+    {
+      label: "Install",
+      href: buildInstallHref(app.installUrl, app.liveUrl),
       kind: "external",
-      emphasis: "ghost",
-    });
-  }
-
-  return { primary, secondary };
-}
-
-export function getDetailActions(app: CatalogApp) {
-  const actions: CatalogAction[] = [];
-
-  if (app.appUrl) {
-    actions.push({
+      emphasis: "primary",
+      navigation: "same-tab",
+    },
+    {
       label: "Open app",
-      href: app.appUrl,
-      kind: "external",
-      emphasis: "primary",
-    });
-  }
-
-  if (app.installStrategy === "install-in-app" && app.appUrl) {
-    actions.push({
-      label: "Install in app",
-      href: app.appUrl,
+      href: app.liveUrl,
       kind: "external",
       emphasis: "secondary",
-    });
-  } else if (!app.appUrl) {
-    actions.push({
-      label: app.installStrategy === "coming-soon" ? "Coming soon" : "View details",
-      href: app.installStrategy === "coming-soon" ? null : detailHref(app),
-      kind: app.installStrategy === "coming-soon" ? "disabled" : "internal",
-      emphasis: "secondary",
-    });
-  }
-
-  if (app.repoUrl) {
-    actions.push({
-      label: "Source repo",
-      href: app.repoUrl,
-      kind: "external",
-      emphasis: "ghost",
-    });
-  }
-
-  if (actions.length === 0) {
-    actions.push({
-      label: "Coming soon",
-      href: null,
-      kind: "disabled",
-      emphasis: "primary",
-    });
-  }
+      navigation: "new-tab",
+    },
+  ];
 
   return actions;
 }
