@@ -69,16 +69,6 @@ export default function Home() {
             <AppSection app={app} index={index} key={app.slug} />
           ))}
         </div>
-
-        <section className="catalog-footer surface-card">
-          <p className="eyebrow">Grounded Catalog</p>
-          <h2>Trove keeps the storefront tight.</h2>
-          <p>
-            Live URLs are grounded before they ship, install calls stay inside each
-            app, and the catalog only carries screenshots that came from real app
-            surfaces.
-          </p>
-        </section>
       </div>
     </main>
   );

@@ -402,18 +402,6 @@ img {
   margin-top: 1.25rem;
 }
 
-.catalog-section__url {
-  margin-top: 1.3rem;
-}
-
-.catalog-section__url a {
-  display: inline-block;
-  margin-top: 0.35rem;
-  color: rgb(var(--text));
-  font-size: 0.96rem;
-  font-weight: 520;
-}
-
 .catalog-rail {
   display: flex;
   flex-direction: column;
@@ -477,24 +465,6 @@ img {
 .shot-card figcaption span {
   color: rgb(var(--text));
   font-weight: 550;
-}
-
-.catalog-footer {
-  margin-top: 1.5rem;
-  border-radius: 30px;
-  padding: 1.4rem;
-}
-
-.catalog-footer h2 {
-  margin: 0.45rem 0 0;
-  font-size: 1.9rem;
-  letter-spacing: -0.04em;
-}
-
-.catalog-footer p:last-child {
-  margin: 0.8rem 0 0;
-  color: rgb(var(--muted));
-  line-height: 1.75;
 }
 
 @media (min-width: 900px) {

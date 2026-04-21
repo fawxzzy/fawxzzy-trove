@@ -29,7 +29,6 @@ export function AppSection({ app, index }: AppSectionProps) {
 
         <div className="catalog-section__eyebrow">
           <span className="eyebrow">App {String(index + 1).padStart(2, "0")}</span>
-          <span className="meta-chip">Live now</span>
         </div>
 
         <div className="catalog-section__title">
@@ -61,13 +60,6 @@ export function AppSection({ app, index }: AppSectionProps) {
           {actions.map((action) => (
             <ActionLink action={action} key={`${app.slug}-${action.label}`} />
           ))}
-        </div>
-
-        <div className="catalog-section__url">
-          <span className="field-label">Live URL</span>
-          <a href={app.liveUrl} target="_blank" rel="noreferrer">
-            {app.liveUrl.replace("https://", "")}
-          </a>
         </div>
       </div>
 
