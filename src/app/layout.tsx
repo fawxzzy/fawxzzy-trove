@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     template: "%s | Trove",
   },
   description:
-    "Trove is the grounded catalog layer for Fawxzzy applications, with truthful open and install routes for independent PWAs.",
+    "Trove is the one-page storefront for live Fawxzzy apps, with grounded launch links, app-owned install flow, and inline screenshot rails.",
   applicationName: "Trove",
   manifest: "/manifest.webmanifest",
   keywords: [
@@ -52,14 +52,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Trove",
     description:
-      "A grounded catalog for Fawxzzy apps with truthful open and install paths.",
+      "A one-page storefront for live Fawxzzy apps with grounded launch links and inline screenshots.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Trove",
     description:
-      "A grounded catalog for Fawxzzy apps with truthful open and install paths.",
+      "A one-page storefront for live Fawxzzy apps with grounded launch links and inline screenshots.",
   },
 };
 

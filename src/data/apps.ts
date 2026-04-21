@@ -1,168 +1,122 @@
-export type AppStatus = "live" | "local-proof" | "incubating" | "coming-soon";
+export type CatalogActionLabel = "Open app" | "Install in app";
 
-export type InstallStrategy =
-  | "install-in-app"
-  | "open-only"
-  | "details-only"
-  | "coming-soon";
+export type CatalogAsset = {
+  src: string;
+  source: string;
+};
+
+export type CatalogScreenshot = {
+  alt: string;
+  caption: string;
+  src: string;
+  source: string;
+};
 
 type Accent = {
   from: string;
-  to: string;
   glow: string;
+  panel: string;
+  to: string;
 };
 
 export type CatalogApp = {
   name: string;
   slug: string;
+  tagline: string;
   description: string;
-  icon: string;
-  heroImage: string;
-  status: AppStatus;
-  appUrl: string | null;
-  repoUrl: string | null;
+  liveUrl: string;
+  installUrl: string | null;
+  icon: CatalogAsset;
   tags: string[];
   accent: Accent;
-  platforms: string[];
-  installStrategy: InstallStrategy;
-  installNotes: string[];
-  featured: boolean;
-  evidence: string[];
+  screenshots: CatalogScreenshot[];
 };
 
 export const apps: CatalogApp[] = [
   {
-    name: "Fawxzzy Fitness",
+    name: "Fitness",
     slug: "fitness",
+    tagline: "Training plans, workout logging, and session history in one mobile-first shell.",
     description:
-      "Workout logging, routine planning, and session tracking in a mobile-first application shell.",
-    icon: "/apps/fitness-icon.svg",
-    heroImage: "/apps/fitness-hero.svg",
-    status: "live",
-    appUrl: "https://fitness.fawxzzy.com",
-    repoUrl: "https://github.com/fawxzzy/fawxzzy-fitness.git",
-    tags: ["Wellness", "PWA", "Tracking"],
-    accent: {
-      from: "#47d7c4",
-      to: "#63c4ff",
-      glow: "rgb(115 255 227 / 0.46)",
+      "Fitness is the structured daily app in the lineup: clean entry flow, focused habit tracking, and an installable PWA experience that stays on the app's own origin.",
+    liveUrl: "https://fawxzzy-fitness-local.vercel.app",
+    installUrl: "https://fawxzzy-fitness-local.vercel.app",
+    icon: {
+      src: "https://fawxzzy-fitness-local.vercel.app/app/icon-192.png",
+      source: "fawxzzy-fitness public/app/icon-192.png via the live app origin",
     },
-    platforms: ["Web", "iPhone", "Android"],
-    installStrategy: "install-in-app",
-    installNotes: [
-      "Open Fitness on its own origin to use the browser's real install flow.",
-      "Trove never proxies or simulates the browser install prompt for another app.",
-    ],
-    featured: true,
-    evidence: [
-      "Production hostname is grounded by repos/fawxzzy-atlas/docs/LIFELINE_TOPOLOGY_MANIFEST.json.",
-      "Repository remote is grounded by stack.lock.yaml.",
+    tags: ["PWA", "Workouts", "History"],
+    accent: {
+      from: "#82ffd8",
+      glow: "rgba(130, 255, 216, 0.42)",
+      panel: "rgba(10, 30, 28, 0.88)",
+      to: "#79c8ff",
+    },
+    screenshots: [
+      {
+        alt: "Fitness home surface",
+        caption: "Home surface",
+        src: "/apps/fitness/screenshots/home.png",
+        source: "Headless Edge capture from https://fawxzzy-fitness-local.vercel.app on April 21, 2026",
+      },
+      {
+        alt: "Fitness login screen",
+        caption: "Login flow",
+        src: "/apps/fitness/screenshots/login.png",
+        source: "Headless Edge capture from https://fawxzzy-fitness-local.vercel.app/login on April 21, 2026",
+      },
+      {
+        alt: "Fitness signup screen",
+        caption: "Signup flow",
+        src: "/apps/fitness/screenshots/signup.png",
+        source: "Headless Edge capture from https://fawxzzy-fitness-local.vercel.app/signup on April 21, 2026",
+      },
     ],
   },
   {
     name: "Mazer",
     slug: "mazer",
+    tagline: "A distilled maze surface tuned for watch mode, play mode, and installable ambient play.",
     description:
-      "A Phaser-based maze experience with installability proof work and repo-owned visual verification.",
-    icon: "/apps/mazer-icon.svg",
-    heroImage: "/apps/mazer-hero.svg",
-    status: "local-proof",
-    appUrl: null,
-    repoUrl: "https://github.com/fawxzzy/fawxzzy-mazer.git",
-    tags: ["Games", "Phaser", "Installability"],
-    accent: {
-      from: "#a58cff",
-      to: "#ff7a72",
-      glow: "rgb(214 160 255 / 0.42)",
+      "Mazer is the game lane in the catalog: atmospheric, installable, and already shaped around public live play instead of a repo-tour or audit surface.",
+    liveUrl: "https://fawxzzy-mazer.vercel.app",
+    installUrl: "https://fawxzzy-mazer.vercel.app",
+    icon: {
+      src: "https://fawxzzy-mazer.vercel.app/icons/mazer-emblem.svg",
+      source: "fawxzzy-mazer public/icons/mazer-emblem.svg via the live app origin",
     },
-    platforms: ["Web", "Desktop", "Touch"],
-    installStrategy: "details-only",
-    installNotes: [
-      "The app has its own install surface, but no public production origin is declared in the local stack files yet.",
-      "Use Trove for status and repo discovery until a grounded live URL exists.",
-    ],
-    featured: true,
-    evidence: [
-      "Current product doctrine and install behavior are grounded by repos/fawxzzy-mazer/README.md.",
-      "Repository remote is grounded by stack.lock.yaml.",
-    ],
-  },
-  {
-    name: "Fawxzzy Stream",
-    slug: "stream",
-    description:
-      "A live-streaming control plane for operators, overlays, and reusable broadcast state.",
-    icon: "/apps/stream-icon.svg",
-    heroImage: "/apps/stream-hero.svg",
-    status: "incubating",
-    appUrl: null,
-    repoUrl: null,
-    tags: ["Streaming", "Operator", "Control Plane"],
+    tags: ["Game", "Installable", "Ambient"],
     accent: {
-      from: "#5dcfff",
-      to: "#47d7c4",
-      glow: "rgb(120 214 255 / 0.42)",
+      from: "#ffb36c",
+      glow: "rgba(255, 179, 108, 0.36)",
+      panel: "rgba(45, 21, 8, 0.88)",
+      to: "#ff7462",
     },
-    platforms: ["Web", "OBS", "Operator"],
-    installStrategy: "coming-soon",
-    installNotes: [
-      "This lane is still incubating and does not expose a grounded public origin in local stack files.",
-      "Treat it as a tracked future surface rather than a live install target.",
-    ],
-    featured: false,
-    evidence: [
-      "Purpose and current phase are grounded by repos/fawxzzy-stream/README.md.",
-      "No public hostname or Git remote is declared for this repo in the current stack files.",
+    screenshots: [
+      {
+        alt: "Mazer watch mode",
+        caption: "Watch mode",
+        src: "/apps/mazer/screenshots/watch.png",
+        source: "Headless Edge capture from https://fawxzzy-mazer.vercel.app on April 21, 2026",
+      },
+      {
+        alt: "Mazer play mode",
+        caption: "Play mode",
+        src: "/apps/mazer/screenshots/play.png",
+        source:
+          "Headless Edge capture from https://fawxzzy-mazer.vercel.app/?content=core-only&mode=play on April 21, 2026",
+      },
+      {
+        alt: "Mazer ember theme",
+        caption: "Ember theme",
+        src: "/apps/mazer/screenshots/theme-ember.png",
+        source:
+          "Headless Edge capture from https://fawxzzy-mazer.vercel.app/?content=core-only&theme=ember on April 21, 2026",
+      },
     ],
   },
 ];
 
 export function getAppBySlug(slug: string) {
   return apps.find((app) => app.slug === slug);
-}
-
-export function getFeaturedApps() {
-  return apps.filter((app) => app.featured);
-}
-
-export function getOtherApps() {
-  return apps.filter((app) => !app.featured);
-}
-
-export function getStatusMeta(status: AppStatus) {
-  switch (status) {
-    case "live":
-      return {
-        label: "Live",
-        tone: "rgb(var(--accent) / 0.18)",
-      };
-    case "local-proof":
-      return {
-        label: "Local Proof",
-        tone: "rgb(var(--warning) / 0.18)",
-      };
-    case "incubating":
-      return {
-        label: "Incubating",
-        tone: "rgb(var(--accent-strong) / 0.18)",
-      };
-    case "coming-soon":
-      return {
-        label: "Coming Soon",
-        tone: "rgb(var(--stroke) / 0.18)",
-      };
-  }
-}
-
-export function getInstallStrategyLabel(strategy: InstallStrategy) {
-  switch (strategy) {
-    case "install-in-app":
-      return "Install in app";
-    case "open-only":
-      return "Open app";
-    case "details-only":
-      return "View details";
-    case "coming-soon":
-      return "Coming soon";
-  }
 }

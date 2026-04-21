@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { CatalogAction } from "@/lib/catalog";
 
 type ActionLinkProps = {
@@ -8,7 +7,6 @@ type ActionLinkProps = {
 const emphasisClassName: Record<CatalogAction["emphasis"], string> = {
   primary: "catalog-button catalog-button--primary",
   secondary: "catalog-button catalog-button--secondary",
-  ghost: "catalog-button catalog-button--ghost",
 };
 
 export function ActionLink({ action }: ActionLinkProps) {
@@ -39,8 +37,13 @@ export function ActionLink({ action }: ActionLinkProps) {
   }
 
   return (
-    <Link className={className} href={action.href}>
+    <a
+      className={className}
+      href={action.href}
+      target="_blank"
+      rel="noreferrer"
+    >
       {action.label}
-    </Link>
+    </a>
   );
 }
