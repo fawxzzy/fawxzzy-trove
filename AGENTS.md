@@ -1,7 +1,7 @@
 # Fawxzzy-Trove Repo Rules
 
 Scope
-- Applies to `C:\ATLAS\repos\fawxzzy-trove`.
+- Applies to this repo root.
 
 Purpose
 - Trove is the catalog layer for Fawxzzy applications.
