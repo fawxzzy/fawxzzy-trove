@@ -76,9 +76,9 @@ export const apps: CatalogApp[] = [
   {
     name: "Mazer",
     slug: "mazer",
-    tagline: "An atmospheric maze experience tuned for watch mode, play mode, and installable ambient sessions.",
+    tagline: "An atmospheric maze experience tuned for watch mode, play mode, and installable ambient play.",
     description:
-      "Mazer is the game lane in the catalog: atmospheric, installable, and already shaped for public live play instead of a repo-tour or audit detour.",
+      "Mazer is the game lane in the catalog: atmospheric, installable, and ready for public live play without sending people through a repo-tour detour.",
     liveUrl: "https://fawxzzy-mazer.vercel.app",
     installUrl: "https://fawxzzy-mazer.vercel.app",
     icon: {

@@ -8,14 +8,16 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "serve out --listen 3000",
+    "start": "serve out --listen tcp://0.0.0.0:3000",
     "lint": "eslint .",
-    "verify": "npm run lint && npm run build"
+    "smoke:lifeline": "node scripts/smoke-lifeline.mjs",
+    "verify": "npm run lint && npm run build && npm run smoke:lifeline"
   },
   "dependencies": {
     "next": "16.2.4",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "serve": "^14.2.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -24,7 +26,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
-    "serve": "^14.2.5",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

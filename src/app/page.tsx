@@ -18,21 +18,21 @@ export default function Home() {
               </h1>
             </div>
 
-            <div className="hero__body">
+            <div className="hero__actions">
+              <a className="catalog-button catalog-button--primary" href="#catalog">
+                Browse live apps
+              </a>
+              <a className="catalog-button catalog-button--secondary" href="#fitness">
+                See live proof
+              </a>
+            </div>
+
+            <div className="hero__body readable-column">
               <p className="hero__lede">
                 Trove keeps the launch path honest and easy to scan: truthful
                 app actions first, supporting context second, and real
                 screenshots inline instead of detail-page detours.
               </p>
-
-              <div className="hero__actions">
-                <a className="catalog-button catalog-button--primary" href="#catalog">
-                  Browse live apps
-                </a>
-                <a className="catalog-button catalog-button--secondary" href="#fitness">
-                  See live proof
-                </a>
-              </div>
 
               <div className="hero__chips">
                 <span className="meta-chip">2 live apps</span>
@@ -70,23 +70,27 @@ export default function Home() {
 
             return (
               <article className="catalog-index__item surface-card" key={app.slug}>
-                <div className="catalog-index__header">
-                  <div>
-                    <span className="field-label">{app.slug}</span>
-                    <strong>{app.name}</strong>
+                <div className="catalog-index__top">
+                  <div className="catalog-index__header">
+                    <div>
+                      <span className="field-label">{app.slug}</span>
+                      <strong>{app.name}</strong>
+                    </div>
+                    <a className="catalog-index__anchor" href={`#${app.slug}`}>
+                      See screenshots
+                    </a>
                   </div>
-                  <a className="catalog-index__anchor" href={`#${app.slug}`}>
-                    See screenshots
-                  </a>
-                </div>
 
-                <div className="catalog-index__actions">
-                  {actions.map((action) => (
-                    <ActionLink action={action} key={`${app.slug}-${action.label}`} />
-                  ))}
-                </div>
+                  <div className="catalog-index__actions">
+                    {actions.map((action) => (
+                      <ActionLink action={action} key={`${app.slug}-${action.label}`} />
+                    ))}
+                  </div>
 
-                <p>{app.tagline}</p>
+                  <div className="catalog-index__summary">
+                    <p>{app.tagline}</p>
+                  </div>
+                </div>
 
                 <div className="catalog-index__meta">
                   {app.tags.map((tag) => (

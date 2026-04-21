@@ -27,10 +27,12 @@ npm run dev
 npm run lint
 npm run build
 npm run start
+npm run smoke:lifeline
 npm run verify
 ```
 
 `npm run start` serves the static export from `out/` on port `3000`.
+`npm run smoke:lifeline` serves the static export and checks `/`, `/healthz.json`, and `manifest.webmanifest`.
 
 ## Catalog contract
 
@@ -109,6 +111,16 @@ Keep the catalog compatible with export:
 - do not reintroduce dynamic app detail routes
 - avoid server-only runtime behavior on `/`
 - keep the catalog content build-time static
+
+## Lifeline pilot
+
+Wave 1 pilot cutover files live in:
+
+- `.lifeline/trove.lifeline.yml`
+- `.lifeline/wave1-deploy.manifest.json`
+- `docs/lifeline-wave1-pilot.md`
+
+Those files pin Trove to the current Lifeline runtime and deploy contract without widening Trove into a platform repo.
 
 ## Local-only files
 

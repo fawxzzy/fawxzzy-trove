@@ -57,17 +57,15 @@ export function AppSection({ app, index }: AppSectionProps) {
                 <p>{app.tagline}</p>
               </div>
             </div>
-
-            <div className="catalog-section__actions">
-              {actions.map((action) => (
-                <ActionLink action={action} key={`${app.slug}-${action.label}`} />
-              ))}
-            </div>
           </div>
 
-          <div className="catalog-section__support">
-            <p className="catalog-section__description">{app.description}</p>
+          <div className="catalog-section__actions">
+            {actions.map((action) => (
+              <ActionLink action={action} key={`${app.slug}-${action.label}`} />
+            ))}
+          </div>
 
+          <div className="catalog-section__support readable-column">
             <div className="catalog-section__meta">
               <div className="catalog-section__tags">
                 {app.tags.map((tag) => (
@@ -76,8 +74,10 @@ export function AppSection({ app, index }: AppSectionProps) {
                   </span>
                 ))}
               </div>
-              <p className="catalog-section__evidence">{evidence}</p>
             </div>
+
+            <p className="catalog-section__description">{app.description}</p>
+            <p className="catalog-section__evidence">{evidence}</p>
           </div>
         </div>
       </div>
