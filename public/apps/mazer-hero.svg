@@ -1,0 +1,15 @@
+<svg width="640" height="400" viewBox="0 0 640 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="400" rx="48" fill="url(#bg)"/>
+  <circle cx="120" cy="88" r="94" fill="#E8D8FF" fill-opacity="0.18"/>
+  <circle cx="530" cy="318" r="110" fill="#FFD4CF" fill-opacity="0.16"/>
+  <rect x="106" y="96" width="428" height="208" rx="32" fill="#120E24" fill-opacity="0.26" stroke="white" stroke-opacity="0.14"/>
+  <path d="M152 140H490V170H232V200H404V230H232V260H490" stroke="white" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="378" cy="230" r="14" fill="#FFD4CF"/>
+  <text x="106" y="78" fill="white" fill-opacity="0.82" font-family="Geist, Arial, sans-serif" font-size="34" font-weight="700">Mazer</text>
+  <defs>
+    <linearGradient id="bg" x1="24" y1="24" x2="608" y2="376" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A58CFF"/>
+      <stop offset="1" stop-color="#FF7A72"/>
+    </linearGradient>
+  </defs>
+</svg>

@@ -1,0 +1,17 @@
+<svg width="640" height="400" viewBox="0 0 640 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="400" rx="48" fill="url(#bg)"/>
+  <circle cx="132" cy="86" r="96" fill="#B6F4FF" fill-opacity="0.18"/>
+  <circle cx="542" cy="316" r="112" fill="#A8FFF0" fill-opacity="0.14"/>
+  <rect x="108" y="106" width="424" height="188" rx="32" fill="#07111B" fill-opacity="0.24" stroke="white" stroke-opacity="0.14"/>
+  <rect x="156" y="144" width="240" height="118" rx="22" fill="white" fill-opacity="0.1" stroke="white" stroke-opacity="0.18"/>
+  <path d="M198 188H350" stroke="white" stroke-width="14" stroke-linecap="round"/>
+  <path d="M198 220H306" stroke="#A6FFF3" stroke-width="14" stroke-linecap="round"/>
+  <path d="M432 148L500 118V282L432 252" fill="white" fill-opacity="0.9"/>
+  <text x="108" y="82" fill="white" fill-opacity="0.82" font-family="Geist, Arial, sans-serif" font-size="34" font-weight="700">Stream</text>
+  <defs>
+    <linearGradient id="bg" x1="18" y1="24" x2="614" y2="376" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5DCFFF"/>
+      <stop offset="1" stop-color="#47D7C4"/>
+    </linearGradient>
+  </defs>
+</svg>

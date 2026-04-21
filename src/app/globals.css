@@ -1,0 +1,251 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  --canvas: 6 12 21;
+  --canvas-deep: 3 8 14;
+  --panel: 12 21 35;
+  --panel-strong: 17 28 45;
+  --card: 18 31 48;
+  --stroke: 164 185 210;
+  --text: 240 245 250;
+  --muted: 158 173 194;
+  --subtle: 100 118 144;
+  --accent: 71 215 196;
+  --accent-strong: 100 196 255;
+  --glow: 115 255 227;
+  --warning: 241 182 83;
+  --danger: 255 120 140;
+  --shadow-card: 0 18px 56px rgba(0, 0, 0, 0.32);
+}
+
+@theme inline {
+  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+  --color-canvas: rgb(var(--canvas));
+  --color-canvas-deep: rgb(var(--canvas-deep));
+  --color-panel: rgb(var(--panel));
+  --color-panel-strong: rgb(var(--panel-strong));
+  --color-card: rgb(var(--card));
+  --color-stroke: rgb(var(--stroke));
+  --color-text: rgb(var(--text));
+  --color-muted: rgb(var(--muted));
+  --color-subtle: rgb(var(--subtle));
+  --color-accent: rgb(var(--accent));
+  --color-accent-strong: rgb(var(--accent-strong));
+  --color-warning: rgb(var(--warning));
+  --color-danger: rgb(var(--danger));
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top left, rgb(var(--glow) / 0.18), transparent 32%),
+    radial-gradient(circle at 85% 16%, rgb(var(--accent-strong) / 0.16), transparent 28%),
+    linear-gradient(180deg, rgb(var(--canvas)), rgb(var(--canvas-deep)));
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: rgb(var(--text));
+  font-family: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  background:
+    radial-gradient(circle at 0% 0%, rgb(var(--glow) / 0.06), transparent 28%),
+    radial-gradient(circle at 100% 12%, rgb(var(--accent-strong) / 0.08), transparent 30%),
+    linear-gradient(180deg, rgb(var(--canvas)), rgb(var(--canvas-deep)));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+::selection {
+  background: rgb(var(--accent) / 0.28);
+  color: rgb(var(--text));
+}
+
+.shell-container {
+  width: min(1120px, calc(100vw - 1.5rem));
+  margin-inline: auto;
+}
+
+.surface-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgb(var(--stroke) / 0.16);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.04), transparent 28%),
+    rgb(var(--panel) / 0.78);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(18px);
+}
+
+.surface-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgb(var(--stroke) / 0.12);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.04), transparent 26%),
+    rgb(var(--card) / 0.92);
+  box-shadow: var(--shadow-card);
+}
+
+.hero-mesh::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(135deg, rgb(var(--accent) / 0.14), transparent 36%),
+    radial-gradient(circle at top right, rgb(var(--accent-strong) / 0.18), transparent 34%),
+    linear-gradient(180deg, transparent, rgb(0 0 0 / 0.16));
+}
+
+.catalog-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 0.78rem 1.1rem;
+  font-size: 0.94rem;
+  font-weight: 620;
+  line-height: 1;
+  transition:
+    transform 120ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.catalog-button:hover {
+  transform: translateY(-1px);
+}
+
+.catalog-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(var(--accent) / 0.24);
+}
+
+.catalog-button--primary {
+  border-color: rgb(var(--accent) / 0.42);
+  background:
+    linear-gradient(180deg, rgb(var(--accent) / 0.22), rgb(var(--accent) / 0.12)),
+    rgb(var(--panel-strong));
+  color: rgb(var(--text));
+}
+
+.catalog-button--secondary {
+  border-color: rgb(var(--stroke) / 0.18);
+  background: rgb(var(--panel-strong) / 0.86);
+  color: rgb(var(--text));
+}
+
+.catalog-button--ghost {
+  border-color: rgb(var(--stroke) / 0.12);
+  background: rgb(255 255 255 / 0.02);
+  color: rgb(var(--muted));
+}
+
+.catalog-button--disabled {
+  border-color: rgb(var(--stroke) / 0.08);
+  background: rgb(255 255 255 / 0.04);
+  color: rgb(var(--subtle));
+  cursor: not-allowed;
+}
+
+.status-pill,
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.42rem 0.72rem;
+  font-size: 0.72rem;
+  font-weight: 620;
+  letter-spacing: 0.02em;
+}
+
+.status-pill {
+  border: 1px solid rgb(var(--stroke) / 0.18);
+  background: rgb(var(--panel-strong) / 0.84);
+  color: rgb(var(--text));
+}
+
+.meta-chip {
+  border: 1px solid rgb(var(--stroke) / 0.12);
+  background: rgb(255 255 255 / 0.02);
+  color: rgb(var(--muted));
+}
+
+.card-accent {
+  position: absolute;
+  inset: -25% auto auto -10%;
+  width: 16rem;
+  height: 16rem;
+  border-radius: 999px;
+  filter: blur(42px);
+  opacity: 0.32;
+  pointer-events: none;
+  background:
+    radial-gradient(circle, var(--accent-glow, rgb(var(--glow) / 0.52)) 0%, transparent 68%);
+}
+
+.eyebrow {
+  color: rgb(var(--accent));
+  font-size: 0.8rem;
+  font-weight: 650;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.section-title {
+  font-size: clamp(1.9rem, 4vw, 3.1rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  font-weight: 640;
+}
+
+.field-label {
+  color: rgb(var(--subtle));
+  font-size: 0.78rem;
+  font-weight: 620;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.field-copy {
+  color: rgb(var(--muted));
+  line-height: 1.65;
+}
+
+.hairline {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, rgb(var(--stroke) / 0.18), transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalog-button {
+    transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+  }
+
+  .catalog-button:hover {
+    transform: none;
+  }
+}
