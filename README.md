@@ -38,6 +38,53 @@ The workflow installs with `npm ci` and then runs:
 - `npm run build`
 - `npm run verify`
 
+## Vercel operator notes
+
+Trove is prepared for a local-first Vercel CLI workflow. The repo keeps Git-triggered Vercel deploys disabled in `vercel.json`, and `_stack` already points at the approved Trove preview, prebuilt, and production command surfaces.
+
+### Manual binding steps
+
+Linking Trove to a real Vercel project is still manual:
+
+```bash
+pnpm dlx vercel --cwd . link --yes --project <name-or-id> --scope <team>
+pnpm dlx vercel --cwd . open
+```
+
+Pulling local Vercel project settings and environment variables is also manual:
+
+```bash
+pnpm dlx vercel --cwd . pull
+pnpm dlx vercel --cwd . pull .env.production.local --environment=production
+```
+
+### After linking
+
+Once the repo is linked to the correct Vercel project, the approved operator path stays in `_stack`:
+
+- `pnpm run trove:verify`
+- `pnpm run trove:deploy:preview`
+- `pnpm run trove:build:vercel`
+- `pnpm run trove:deploy:prebuilt`
+- `pnpm run trove:deploy:prod`
+- `pnpm run trove:deploy:prebuilt:prod`
+
+### Never commit local Vercel state
+
+Keep these local-only:
+
+- `.vercel/`
+- `.env.local`
+- `.env.production.local`
+- any pulled env files, tokens, or machine-local project linkage state
+
+### Where grounded URLs belong
+
+- Do not commit ad hoc preview URLs from one-off deploys.
+- Once Trove has a real stack-managed public hostname or preview hostname contract, record that in the stack topology source of truth first.
+- For Atlas-managed public environment hints, `_stack` already treats `repos/fawxzzy-atlas/docs/LIFELINE_TOPOLOGY_MANIFEST.json` as the read-only topology contract.
+- Trove should only expose grounded app URLs in `src/data/apps.ts` after that upstream stack evidence exists.
+
 ## Editing the catalog
 
 Edit `src/data/apps.ts` to add or update apps.

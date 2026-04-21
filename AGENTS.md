@@ -14,6 +14,7 @@ Rules
 - Only publish live URLs when they are grounded by local stack evidence.
 - Treat install behavior as content plus routing, not as a synthetic browser install API.
 - Use the ATLAS branding pipeline outputs that sync into `public/`; do not create repo-owned canonical app icons.
+- Keep `.vercel/` and pulled env files local-only; do not commit machine-local Vercel linkage state.
 
 Verification
 - Run `npm run verify` before claiming completion.
