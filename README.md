@@ -44,6 +44,10 @@ Each app entry now owns:
 - local screenshot rail entries
 - short consumer-facing copy and tags
 
+Install buttons are same-tab handoffs into the app's own origin. Trove appends
+`?install=1` to the grounded install URL, or falls back to the grounded live URL
+when a separate install URL is not available.
+
 ## Grounding live URLs
 
 Do not guess app domains.

@@ -1,4 +1,4 @@
-export type CatalogActionLabel = "Open app" | "Install in app";
+export type CatalogActionLabel = "Open app" | "Install";
 
 export type CatalogAsset = {
   src: string;

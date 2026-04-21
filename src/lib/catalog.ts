@@ -5,26 +5,41 @@ export type CatalogAction = {
   href: string | null;
   kind: "external" | "disabled";
   emphasis: "primary" | "secondary";
+  navigation: "same-tab" | "new-tab";
 };
+
+const INSTALL_INTENT_PARAM = "install";
+const INSTALL_INTENT_VALUE = "1";
+
+function buildInstallHref(installUrl: string | null, liveUrl: string) {
+  const sourceUrl = installUrl ?? liveUrl;
+
+  try {
+    const url = new URL(sourceUrl);
+    url.searchParams.set(INSTALL_INTENT_PARAM, INSTALL_INTENT_VALUE);
+    return url.toString();
+  } catch {
+    return sourceUrl;
+  }
+}
 
 export function getAppActions(app: CatalogApp) {
   const actions: CatalogAction[] = [
     {
+      label: "Install",
+      href: buildInstallHref(app.installUrl, app.liveUrl),
+      kind: "external",
+      emphasis: "primary",
+      navigation: "same-tab",
+    },
+    {
       label: "Open app",
       href: app.liveUrl,
       kind: "external",
-      emphasis: "primary",
+      emphasis: "secondary",
+      navigation: "new-tab",
     },
   ];
-
-  if (app.installUrl) {
-    actions.push({
-      label: "Install in app",
-      href: app.installUrl,
-      kind: "external",
-      emphasis: "secondary",
-    });
-  }
 
   return actions;
 }

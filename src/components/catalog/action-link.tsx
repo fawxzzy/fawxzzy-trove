@@ -14,6 +14,10 @@ export function ActionLink({ action }: ActionLinkProps) {
     action.kind === "disabled"
       ? "catalog-button catalog-button--disabled"
       : emphasisClassName[action.emphasis];
+  const externalProps =
+    action.navigation === "new-tab"
+      ? { target: "_blank", rel: "noreferrer" }
+      : {};
 
   if (action.kind === "disabled" || !action.href) {
     return (
@@ -25,24 +29,14 @@ export function ActionLink({ action }: ActionLinkProps) {
 
   if (action.kind === "external") {
     return (
-      <a
-        className={className}
-        href={action.href}
-        target="_blank"
-        rel="noreferrer"
-      >
+      <a className={className} href={action.href} {...externalProps}>
         {action.label}
       </a>
     );
   }
 
   return (
-    <a
-      className={className}
-      href={action.href}
-      target="_blank"
-      rel="noreferrer"
-    >
+    <a className={className} href={action.href} {...externalProps}>
       {action.label}
     </a>
   );
