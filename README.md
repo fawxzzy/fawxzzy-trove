@@ -121,4 +121,4 @@ Trove exposes only truthful states:
 
 - Mazer currently has grounded repo truth and local install evidence, but no grounded public production URL in local stack files.
 - Stream has grounded repo-local product doctrine, but no grounded public URL or Git remote in local stack files.
-- Trove is scaffolded for later Vercel/project binding, but this pass does not perform live deployment or secret linkage.
+- Trove now has a real Vercel project and deploy path, but `.vercel/`, pulled env files, and any secret-bearing local linkage state remain local-only and uncommitted.
