@@ -11,6 +11,15 @@ type AppSectionProps = {
 
 export function AppSection({ app, index }: AppSectionProps) {
   const actions = getAppActions(app);
+  const evidence = app.installUrl
+    ? [
+        "Open the live app or begin install on the app's own origin.",
+        "The icon and screenshots stay grounded to the shipped surface.",
+      ].join(" ")
+    : [
+        "Open the live app from its grounded origin.",
+        "The icon and screenshots stay grounded to the shipped surface.",
+      ].join(" ");
 
   return (
     <section className="catalog-section" id={app.slug}>
@@ -29,37 +38,47 @@ export function AppSection({ app, index }: AppSectionProps) {
 
         <div className="catalog-section__eyebrow">
           <span className="eyebrow">App {String(index + 1).padStart(2, "0")}</span>
+          <span className="meta-chip">{app.slug}</span>
         </div>
 
-        <div className="catalog-section__title">
-          <Image
-            alt={`${app.name} icon`}
-            className="catalog-section__icon"
-            height={72}
-            src={app.icon.src}
-            unoptimized
-            width={72}
-          />
-          <div>
-            <h2>{app.name}</h2>
-            <p>{app.tagline}</p>
+        <div className="catalog-section__body">
+          <div className="catalog-section__header">
+            <div className="catalog-section__title">
+              <Image
+                alt={`${app.name} icon`}
+                className="catalog-section__icon"
+                height={72}
+                src={app.icon.src}
+                unoptimized
+                width={72}
+              />
+              <div>
+                <h2>{app.name}</h2>
+                <p>{app.tagline}</p>
+              </div>
+            </div>
+
+            <div className="catalog-section__actions">
+              {actions.map((action) => (
+                <ActionLink action={action} key={`${app.slug}-${action.label}`} />
+              ))}
+            </div>
           </div>
-        </div>
 
-        <p className="catalog-section__description">{app.description}</p>
+          <div className="catalog-section__support">
+            <p className="catalog-section__description">{app.description}</p>
 
-        <div className="catalog-section__tags">
-          {app.tags.map((tag) => (
-            <span className="meta-chip" key={tag}>
-              {tag}
-            </span>
-          ))}
-        </div>
-
-        <div className="catalog-section__actions">
-          {actions.map((action) => (
-            <ActionLink action={action} key={`${app.slug}-${action.label}`} />
-          ))}
+            <div className="catalog-section__meta">
+              <div className="catalog-section__tags">
+                {app.tags.map((tag) => (
+                  <span className="meta-chip" key={tag}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+              <p className="catalog-section__evidence">{evidence}</p>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -6,6 +6,7 @@ It keeps the catalog simple:
 
 - grounded launch URLs only
 - app-owned install flow only
+- mobile-first CTA hierarchy surfaces the primary truthful action before long supporting copy
 - inline screenshot rails on `/`
 - no detail pages
 - no repo-facing CTA clutter
