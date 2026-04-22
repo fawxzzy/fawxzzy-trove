@@ -1,91 +1,58 @@
-<svg width="940" height="940" viewBox="0 0 940 940" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="940" height="940" rx="120" fill="#0A0D14"/>
-  <rect x="42" y="42" width="856" height="856" rx="96" stroke="url(#outerStroke)" stroke-width="2"/>
-  <circle cx="470" cy="470" r="278" fill="url(#coreGlow)" fill-opacity="0.86"/>
-  <circle cx="470" cy="470" r="214" stroke="url(#orbitStroke)" stroke-width="2" stroke-dasharray="10 18"/>
-  <circle cx="470" cy="470" r="322" stroke="url(#orbitStrokeSoft)" stroke-width="1.5" stroke-dasharray="14 22"/>
-
-  <g filter="url(#cardShadow)">
-    <rect x="206" y="226" width="244" height="316" rx="34" fill="#141C2C"/>
-    <rect x="224" y="246" width="208" height="118" rx="24" fill="url(#fitnessCard)"/>
-    <circle cx="270" cy="414" r="24" fill="#82FFD8"/>
-    <rect x="308" y="394" width="96" height="18" rx="9" fill="#EAF2FF" fill-opacity="0.94"/>
-    <rect x="308" y="426" width="78" height="12" rx="6" fill="#A7B5D7" fill-opacity="0.64"/>
-    <rect x="224" y="470" width="176" height="18" rx="9" fill="#1E2940"/>
-    <rect x="224" y="506" width="112" height="18" rx="9" fill="#1E2940"/>
-  </g>
-
-  <g filter="url(#cardShadow)">
-    <rect x="476" y="392" width="258" height="332" rx="34" fill="#241713"/>
-    <rect x="496" y="414" width="218" height="136" rx="26" fill="url(#mazerCard)"/>
-    <path d="M540 598H678" stroke="#FFD6AA" stroke-width="18" stroke-linecap="round"/>
-    <path d="M540 634H650" stroke="#F3B987" stroke-width="12" stroke-linecap="round" stroke-opacity="0.9"/>
-    <path d="M540 666H612" stroke="#F3B987" stroke-width="12" stroke-linecap="round" stroke-opacity="0.58"/>
-  </g>
-
-  <g filter="url(#nodeShadow)">
-    <circle cx="692" cy="258" r="44" fill="#7AD4FF"/>
-    <circle cx="244" cy="664" r="38" fill="#FF9A61"/>
-    <circle cx="718" cy="742" r="28" fill="#FFE08C"/>
-  </g>
-
-  <path d="M280 678C334 628 388 594 432 576" stroke="url(#signalLine)" stroke-width="6" stroke-linecap="round"/>
-  <path d="M548 318C594 330 642 356 688 406" stroke="url(#signalLineAlt)" stroke-width="6" stroke-linecap="round"/>
-
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="outerStroke" x1="84" y1="74" x2="850" y2="874" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FF9A61" stop-opacity="0.8"/>
-      <stop offset="0.48" stop-color="#87D6FF" stop-opacity="0.32"/>
-      <stop offset="1" stop-color="#FFD38B" stop-opacity="0.72"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a0d13"/>
+      <stop offset="55%" stop-color="#111827"/>
+      <stop offset="100%" stop-color="#1f2937"/>
     </linearGradient>
-    <radialGradient id="coreGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(470 470) rotate(90) scale(278)">
-      <stop stop-color="#1D2A44"/>
-      <stop offset="0.62" stop-color="#121926"/>
-      <stop offset="1" stop-color="#0A0D14"/>
-    </radialGradient>
-    <linearGradient id="orbitStroke" x1="256" y1="268" x2="712" y2="690" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FF9A61"/>
-      <stop offset="1" stop-color="#87D6FF"/>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="50%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
     </linearGradient>
-    <linearGradient id="orbitStrokeSoft" x1="208" y1="742" x2="778" y2="198" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFD38B"/>
-      <stop offset="1" stop-color="#87D6FF"/>
+    <linearGradient id="gemA" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#dbeafe"/>
+      <stop offset="45%" stop-color="#93c5fd"/>
+      <stop offset="100%" stop-color="#60a5fa"/>
     </linearGradient>
-    <linearGradient id="fitnessCard" x1="224" y1="246" x2="432" y2="364" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#6FFFF0"/>
-      <stop offset="1" stop-color="#6ABEFF"/>
+    <linearGradient id="gemB" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c4b5fd"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
     </linearGradient>
-    <linearGradient id="mazerCard" x1="496" y1="414" x2="714" y2="550" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFB56E"/>
-      <stop offset="1" stop-color="#FF7462"/>
+    <linearGradient id="gemC" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#67e8f9"/>
+      <stop offset="100%" stop-color="#0891b2"/>
     </linearGradient>
-    <linearGradient id="signalLine" x1="280" y1="678" x2="432" y2="576" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FF9A61"/>
-      <stop offset="1" stop-color="#FFD38B"/>
-    </linearGradient>
-    <linearGradient id="signalLineAlt" x1="548" y1="318" x2="688" y2="406" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#87D6FF"/>
-      <stop offset="1" stop-color="#6FFFF0"/>
-    </linearGradient>
-    <filter id="cardShadow" x="170" y="198" width="602" height="562" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
-      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-      <feOffset dy="18"/>
-      <feGaussianBlur stdDeviation="18"/>
-      <feComposite in2="hardAlpha" operator="out"/>
-      <feColorMatrix type="matrix" values="0 0 0 0 0.0117647 0 0 0 0 0.0156863 0 0 0 0 0.0313726 0 0 0 0.5 0"/>
-      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_2"/>
-      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_2" result="shape"/>
-    </filter>
-    <filter id="nodeShadow" x="186" y="206" width="558" height="572" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
-      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-      <feOffset dy="14"/>
-      <feGaussianBlur stdDeviation="10"/>
-      <feComposite in2="hardAlpha" operator="out"/>
-      <feColorMatrix type="matrix" values="0 0 0 0 0.0156863 0 0 0 0 0.0196078 0 0 0 0 0.0352941 0 0 0 0.4 0"/>
-      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_2"/>
-      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_2" result="shape"/>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="14" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
     </filter>
   </defs>
+
+  <rect x="24" y="24" width="976" height="976" rx="220" fill="url(#bg)"/>
+
+  <circle cx="512" cy="512" r="300" fill="none" stroke="url(#ring)" stroke-width="26" opacity="0.9" filter="url(#softGlow)"/>
+  <circle cx="512" cy="512" r="300" fill="none" stroke="#e5f0ff" stroke-opacity="0.08" stroke-width="6"/>
+
+  <circle cx="812" cy="512" r="18" fill="#67e8f9"/>
+  <circle cx="331" cy="273" r="14" fill="#a78bfa"/>
+  <circle cx="632" cy="785" r="12" fill="#93c5fd"/>
+
+  <g transform="translate(512 512)">
+    <path d="M 0 -230 L 158 -118 L 118 118 L 0 226 L -118 118 L -158 -118 Z" fill="url(#gemA)" opacity="0.96"/>
+    <path d="M 0 -230 L 158 -118 L 0 -10 Z" fill="#e0f2fe" opacity="0.95"/>
+    <path d="M 0 -10 L 158 -118 L 118 118 Z" fill="url(#gemB)" opacity="0.88"/>
+    <path d="M 0 -10 L 118 118 L 0 226 Z" fill="url(#gemC)" opacity="0.92"/>
+    <path d="M 0 226 L -118 118 L 0 -10 Z" fill="#2563eb" opacity="0.88"/>
+    <path d="M 0 -10 L -118 118 L -158 -118 Z" fill="#7c3aed" opacity="0.84"/>
+    <path d="M 0 -230 L 0 -10 L -158 -118 Z" fill="#bfdbfe" opacity="0.95"/>
+
+    <rect x="-74" y="-66" width="148" height="34" rx="12" fill="#0f172a" opacity="0.92"/>
+    <rect x="-20" y="-66" width="40" height="160" rx="16" fill="#0f172a" opacity="0.92"/>
+  </g>
+
+  <rect x="24" y="24" width="976" height="976" rx="220" fill="none" stroke="#ffffff" stroke-opacity="0.07" stroke-width="8"/>
 </svg>
