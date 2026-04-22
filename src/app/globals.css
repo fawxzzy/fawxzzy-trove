@@ -222,16 +222,11 @@ img {
   margin-inline: auto;
 }
 
-.hero__intro,
-.hero__body {
+.hero__intro {
   display: flex;
   flex-direction: column;
   gap: 0.95rem;
   min-width: 0;
-}
-
-.readable-column {
-  width: min(100%, 38rem);
 }
 
 .hero__title {
@@ -243,15 +238,7 @@ img {
   font-weight: 660;
 }
 
-.hero__lede {
-  margin: 0;
-  color: rgb(var(--muted));
-  font-size: 1.02rem;
-  line-height: 1.74;
-}
-
-.hero__actions,
-.hero__chips {
+.hero__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
@@ -264,31 +251,12 @@ img {
   align-items: center;
 }
 
-.hero__stat {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.45rem;
-  border-radius: 28px;
-  padding: 1.15rem 1.2rem;
-}
-
-.hero__stat strong {
-  font-size: 2.8rem;
-  line-height: 1;
-  letter-spacing: -0.05em;
-}
-
-.hero__stat p {
-  margin: 0;
-  color: rgb(var(--muted));
-  line-height: 1.65;
-}
-
 .hero__art {
   display: grid;
   place-items: center;
+  width: min(100%, 28rem);
   min-height: 15.25rem;
+  margin-left: auto;
   border-radius: 30px;
   border: 1px solid rgb(var(--stroke) / 0.12);
   background:
@@ -376,7 +344,6 @@ img {
 
 .catalog-index__item strong {
   display: block;
-  margin-top: 0.3rem;
   font-size: 1.15rem;
   letter-spacing: -0.03em;
 }
@@ -402,7 +369,7 @@ img {
 .catalog-section__copy {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
   border-radius: 32px;
   padding: 1.5rem 1.4rem 1.8rem;
 }
@@ -422,14 +389,6 @@ img {
   z-index: 1;
 }
 
-.catalog-section__eyebrow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
 .catalog-section__title {
   display: flex;
   align-items: center;
@@ -438,9 +397,7 @@ img {
 }
 
 .catalog-section__body,
-.catalog-section__header,
-.catalog-section__support,
-.catalog-section__meta {
+.catalog-section__support {
   display: flex;
   flex-direction: column;
 }
@@ -450,20 +407,14 @@ img {
   min-width: 0;
 }
 
-.catalog-section__header {
-  gap: 0.95rem;
-  min-width: 0;
-}
-
 .catalog-section__support {
-  gap: 0.95rem;
+  gap: 0.75rem;
   min-width: 0;
-  padding-bottom: 0.35rem;
+  padding-bottom: 0.2rem;
 }
 
 .catalog-section__title > div,
-.catalog-rail,
-.catalog-rail__header {
+.catalog-rail {
   min-width: 0;
 }
 
@@ -485,8 +436,7 @@ img {
   letter-spacing: -0.05em;
 }
 
-.catalog-section__title p,
-.catalog-section__description {
+.catalog-section__title p {
   margin: 0;
   color: rgb(var(--muted));
   line-height: 1.75;
@@ -494,10 +444,6 @@ img {
 
 .catalog-section__title p {
   margin-top: 0.35rem;
-}
-
-.catalog-section__description {
-  margin: 0;
 }
 
 .catalog-section__tags,
@@ -515,40 +461,10 @@ img {
   margin-top: 0.1rem;
 }
 
-.catalog-section__meta {
-  gap: 0.85rem;
-  padding-bottom: 0;
-}
-
-.catalog-section__evidence {
-  margin: 0;
-  color: rgb(var(--muted));
-  line-height: 1.72;
-}
-
 .catalog-rail {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
-}
-
-.catalog-rail__header {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  padding: 0 0.15rem 0.1rem;
-}
-
-.catalog-rail__header h3 {
-  margin: 0.35rem 0 0;
-  font-size: 1.45rem;
-  letter-spacing: -0.04em;
-}
-
-.catalog-rail__header p {
-  margin: 0;
-  color: rgb(var(--muted));
-  line-height: 1.7;
+  gap: 0.75rem;
 }
 
 .catalog-rail__track {
@@ -604,7 +520,7 @@ img {
   }
 
   .hero__visual {
-    grid-template-columns: minmax(14rem, 0.42fr) minmax(0, 0.58fr);
+    justify-items: end;
   }
 
   .catalog-index {
@@ -627,14 +543,9 @@ img {
 
 @media (max-width: 899px) {
   .hero__copy,
-  .hero__intro,
-  .hero__body {
+  .hero__intro {
     align-items: center;
     text-align: center;
-  }
-
-  .readable-column {
-    margin-inline: auto;
   }
 
   .hero__title {
@@ -642,7 +553,6 @@ img {
   }
 
   .hero__actions,
-  .hero__chips,
   .catalog-index__actions,
   .catalog-section__actions,
   .catalog-section__tags {
@@ -700,10 +610,6 @@ img {
     font-size: clamp(1.8rem, 9vw, 2.45rem);
   }
 
-  .hero__body {
-    width: 100%;
-  }
-
   .hero__actions {
     width: 100%;
     flex-direction: column;
@@ -733,9 +639,6 @@ img {
     height: 4rem;
   }
 
-  .catalog-rail__header {
-    padding-inline: 0.1rem;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

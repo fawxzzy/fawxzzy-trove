@@ -23,7 +23,6 @@ export type CatalogApp = {
   name: string;
   slug: string;
   tagline: string;
-  description: string;
   liveUrl: string;
   installUrl: string | null;
   icon: CatalogAsset;
@@ -37,8 +36,6 @@ export const apps: CatalogApp[] = [
     name: "Fitness",
     slug: "fitness",
     tagline: "Training plans, workout logging, and session history in one mobile-first shell.",
-    description:
-      "Fitness is the structured daily app in the lineup: clean entry flow, focused habit tracking, and an installable PWA experience that stays on the app's own origin.",
     liveUrl: "https://fawxzzy-fitness-local.vercel.app",
     installUrl: "https://fawxzzy-fitness-local.vercel.app",
     icon: {
@@ -77,8 +74,6 @@ export const apps: CatalogApp[] = [
     name: "Mazer",
     slug: "mazer",
     tagline: "An atmospheric maze experience tuned for watch mode, play mode, and installable ambient play.",
-    description:
-      "Mazer is the game lane in the catalog: atmospheric, installable, and ready for public live play without sending people through a repo-tour detour.",
     liveUrl: "https://fawxzzy-mazer.vercel.app",
     installUrl: "https://fawxzzy-mazer.vercel.app",
     icon: {
