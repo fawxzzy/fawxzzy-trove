@@ -28,18 +28,20 @@ export function AppSection({ app, index }: AppSectionProps) {
         />
 
         <div className="catalog-section__body">
-          <div className="catalog-section__title">
-            <Image
-              alt={`${app.name} icon`}
-              className="catalog-section__icon"
-              height={72}
-              src={app.icon.src}
-              unoptimized
-              width={72}
-            />
-            <div>
-              <h2>{app.name}</h2>
-              <p>{app.tagline}</p>
+          <div className="catalog-section__header">
+            <div className="catalog-section__title">
+              <Image
+                alt={`${app.name} icon`}
+                className="catalog-section__icon"
+                height={72}
+                src={app.icon.src}
+                unoptimized
+                width={72}
+              />
+              <div>
+                <h2>{app.name}</h2>
+                <p>{app.tagline}</p>
+              </div>
             </div>
           </div>
 
@@ -49,7 +51,7 @@ export function AppSection({ app, index }: AppSectionProps) {
             ))}
           </div>
 
-          <div className="catalog-section__support">
+          <div className="catalog-section__support readable-column">
             <div className="catalog-section__tags">
               {app.tags.map((tag) => (
                 <span className="meta-chip" key={tag}>

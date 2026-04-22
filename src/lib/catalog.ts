@@ -30,7 +30,7 @@ export function getAppActions(app: CatalogApp) {
       href: buildInstallHref(app.installUrl, app.liveUrl),
       kind: "external",
       emphasis: "primary",
-      navigation: "same-tab",
+      navigation: "new-tab",
     },
     {
       label: "Open app",
