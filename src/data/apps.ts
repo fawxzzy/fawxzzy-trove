@@ -1,4 +1,4 @@
-export type CatalogActionLabel = "Open app" | "Install";
+export type CatalogActionLabel = "Open app";
 
 export type CatalogAsset = {
   src: string;
@@ -39,34 +39,44 @@ export const apps: CatalogApp[] = [
     liveUrl: "https://fawxzzy-fitness-local.vercel.app",
     installUrl: "https://fawxzzy-fitness-local.vercel.app",
     icon: {
-      src: "https://fawxzzy-fitness-local.vercel.app/app/icon-192.png",
-      source: "fawxzzy-fitness public/app/icon-192.png via the live app origin",
+      src: "/apps/fitness/icon-192.png",
+      source: "Vendored copy of fawxzzy-fitness public/app/icon-192.png stored in Trove public assets",
     },
     tags: ["PWA", "Workouts", "History"],
     accent: {
-      from: "#82ffd8",
-      glow: "rgba(130, 255, 216, 0.42)",
-      panel: "rgba(10, 30, 28, 0.88)",
-      to: "#79c8ff",
+      from: "#7F977C",
+      glow: "rgba(127, 151, 124, 0.2)",
+      panel: "rgba(8, 14, 10, 0.92)",
+      to: "#5C725D",
     },
     screenshots: [
       {
-        alt: "Fitness home surface",
-        caption: "Home surface",
-        src: "/apps/fitness/screenshots/home.png",
-        source: "Headless Edge capture from https://fawxzzy-fitness-local.vercel.app on April 21, 2026",
+        alt: "Fitness today dashboard",
+        caption: "Today dashboard",
+        src: "/apps/fitness/screenshots/today-dashboard.png",
+        source:
+          "Authenticated local capture from http://127.0.0.1:3010/today using existing Fitness runtime session data on April 24, 2026",
       },
       {
-        alt: "Fitness login screen",
-        caption: "Login flow",
-        src: "/apps/fitness/screenshots/login.png",
-        source: "Headless Edge capture from https://fawxzzy-fitness-local.vercel.app/login on April 21, 2026",
+        alt: "Fitness session history",
+        caption: "Session history",
+        src: "/apps/fitness/screenshots/session-history.png",
+        source:
+          "Authenticated local capture from http://127.0.0.1:3010/history using existing Fitness runtime session data on April 24, 2026",
       },
       {
-        alt: "Fitness signup screen",
-        caption: "Signup flow",
-        src: "/apps/fitness/screenshots/signup.png",
-        source: "Headless Edge capture from https://fawxzzy-fitness-local.vercel.app/signup on April 21, 2026",
+        alt: "Fitness routine planner",
+        caption: "Routine planner",
+        src: "/apps/fitness/screenshots/routine-planner.png",
+        source:
+          "Authenticated local capture from http://127.0.0.1:3010/routines using existing Fitness runtime session data on April 24, 2026",
+      },
+      {
+        alt: "Fitness exercise history",
+        caption: "Exercise history",
+        src: "/apps/fitness/screenshots/exercise-history.png",
+        source:
+          "Authenticated local capture from http://127.0.0.1:3010/exercises using existing Fitness runtime session data on April 24, 2026",
       },
     ],
   },
@@ -77,36 +87,42 @@ export const apps: CatalogApp[] = [
     liveUrl: "https://fawxzzy-mazer.vercel.app",
     installUrl: "https://fawxzzy-mazer.vercel.app",
     icon: {
-      src: "https://fawxzzy-mazer.vercel.app/icons/mazer-emblem.svg",
-      source: "fawxzzy-mazer public/icons/mazer-emblem.svg via the live app origin",
+      src: "/apps/mazer/icon.svg",
+      source: "Vendored copy of fawxzzy-mazer public/icons/mazer-emblem.svg stored in Trove public assets",
     },
     tags: ["Game", "Installable", "Ambient"],
     accent: {
-      from: "#ffb36c",
-      glow: "rgba(255, 179, 108, 0.36)",
-      panel: "rgba(45, 21, 8, 0.88)",
-      to: "#ff7462",
+      from: "#6C836D",
+      glow: "rgba(164, 181, 163, 0.18)",
+      panel: "rgba(8, 14, 10, 0.92)",
+      to: "#A4B5A3",
     },
     screenshots: [
       {
-        alt: "Mazer watch mode",
-        caption: "Watch mode",
-        src: "/apps/mazer/screenshots/watch.png",
-        source: "Headless Edge capture from https://fawxzzy-mazer.vercel.app on April 21, 2026",
+        alt: "Mazer core watch mode",
+        caption: "Core watch mode",
+        src: "/apps/mazer/screenshots/core-watch.png",
+        source:
+          "Repo-owned Edge live capture from http://127.0.0.1:4173/?content=core-only via the core-only-watch run on April 24, 2026",
       },
       {
-        alt: "Mazer play mode",
-        caption: "Play mode",
-        src: "/apps/mazer/screenshots/play.png",
+        alt: "Mazer mobile watch shell",
+        caption: "Mobile watch shell",
+        src: "/apps/mazer/screenshots/mobile-watch.png",
         source:
-          "Headless Edge capture from https://fawxzzy-mazer.vercel.app/?content=core-only&mode=play on April 21, 2026",
+          "Repo-owned Edge live capture from http://127.0.0.1:4173/?content=core-only via the phone-portrait core-only-watch run on April 24, 2026",
       },
       {
-        alt: "Mazer ember theme",
-        caption: "Ember theme",
-        src: "/apps/mazer/screenshots/theme-ember.png",
-        source:
-          "Headless Edge capture from https://fawxzzy-mazer.vercel.app/?content=core-only&theme=ember on April 21, 2026",
+        alt: "Mazer Watch Pass preview shell",
+        caption: "Watch Pass preview",
+        src: "/apps/mazer/screenshots/watch-pass-preview.png",
+        source: "Repo-owned Edge live capture from the local watch-pass-preview shell on April 24, 2026",
+      },
+      {
+        alt: "Mazer Watch Pass setup shell",
+        caption: "Watch Pass setup",
+        src: "/apps/mazer/screenshots/watch-pass-setup.png",
+        source: "Repo-owned Edge live capture from the local watch-pass-setup shell on April 24, 2026",
       },
     ],
   },

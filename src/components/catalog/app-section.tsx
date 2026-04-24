@@ -6,15 +6,15 @@ import { ActionLink } from "@/components/catalog/action-link";
 
 type AppSectionProps = {
   app: CatalogApp;
-  index: number;
 };
 
-export function AppSection({ app, index }: AppSectionProps) {
+export function AppSection({ app }: AppSectionProps) {
   const actions = getAppActions(app);
+  const screenshotsRegionId = `${app.slug}-screenshots`;
 
   return (
     <section className="catalog-section" id={app.slug}>
-      <div className="catalog-section__copy surface-panel">
+      <div className="catalog-section__card surface-panel">
         <div
           className="catalog-section__glow"
           style={
@@ -27,61 +27,80 @@ export function AppSection({ app, index }: AppSectionProps) {
           }
         />
 
-        <div className="catalog-section__body">
-          <div className="catalog-section__header">
-            <div className="catalog-section__title">
-              <Image
-                alt={`${app.name} icon`}
-                className="catalog-section__icon"
-                height={72}
-                src={app.icon.src}
-                unoptimized
-                width={72}
-              />
-              <div>
-                <h2>{app.name}</h2>
-                <p>{app.tagline}</p>
+        <div className="catalog-section__card-content">
+          <div className="catalog-section__body">
+            <div className="catalog-section__header">
+              <div className="catalog-section__title">
+                <div className="catalog-section__icon-frame">
+                  <Image
+                    alt={`${app.name} icon`}
+                    className="catalog-section__icon"
+                    height={96}
+                    src={app.icon.src}
+                    unoptimized
+                    width={96}
+                  />
+                </div>
+                <div>
+                  <h2>{app.name}</h2>
+                  <p>{app.tagline}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="catalog-section__meta">
+              <div className="catalog-section__actions">
+                {actions.map((action) => (
+                  <ActionLink action={action} key={`${app.slug}-${action.label}`} />
+                ))}
+              </div>
+
+              <div className="catalog-section__support readable-column">
+                <div className="catalog-section__tags">
+                  {app.tags.map((tag) => (
+                    <span className="meta-chip" key={tag}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="catalog-section__actions">
-            {actions.map((action) => (
-              <ActionLink action={action} key={`${app.slug}-${action.label}`} />
-            ))}
-          </div>
-
-          <div className="catalog-section__support readable-column">
-            <div className="catalog-section__tags">
-              {app.tags.map((tag) => (
-                <span className="meta-chip" key={tag}>
-                  {tag}
+          <details className="catalog-section__details">
+            <summary className="catalog-section__summary" aria-controls={screenshotsRegionId}>
+              <div className="catalog-section__summary-footer">
+                <span className="catalog-section__preview-trigger">
+                  <span className="field-label catalog-section__preview-label">Preview</span>
+                  <span className="catalog-section__toggle" aria-hidden="true" />
                 </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="catalog-rail">
-        <div className="catalog-rail__track">
-          {app.screenshots.map((shot) => (
-            <figure className="shot-card" key={shot.src}>
-              <div className="shot-card__frame">
-                <Image
-                  alt={shot.alt}
-                  className="shot-card__image"
-                  height={1024}
-                  priority={index === 0}
-                  src={shot.src}
-                  width={1440}
-                />
               </div>
-              <figcaption>
-                <span>{shot.caption}</span>
-              </figcaption>
-            </figure>
-          ))}
+            </summary>
+
+            <div className="catalog-section__panel" id={screenshotsRegionId}>
+              <div className="catalog-rail">
+                <div className="catalog-rail__track">
+                  {app.screenshots.map((shot) => (
+                    <figure className="shot-card" key={shot.src}>
+                      <div className="shot-card__frame">
+                        <Image
+                          alt={shot.alt}
+                          className="shot-card__image"
+                          height={1024}
+                          priority={app.slug === "fitness"}
+                          src={shot.src}
+                          width={1440}
+                        />
+                      </div>
+                      <figcaption>
+                        <span>{shot.caption}</span>
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </details>
         </div>
       </div>
     </section>

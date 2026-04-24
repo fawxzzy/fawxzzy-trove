@@ -10,8 +10,8 @@ export default function manifest(): MetadataRoute.Manifest {
       "A one-page storefront for live Fawxzzy apps with grounded launch links and app-owned install flow.",
     start_url: "/",
     display: "standalone",
-    background_color: "#060c15",
-    theme_color: "#060c15",
+    background_color: "#070c0a",
+    theme_color: "#7f977c",
     icons: [
       {
         src: "/app/icon-192.png",
