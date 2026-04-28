@@ -58,6 +58,36 @@ The deploy manifest is shaped for the pinned `atlas.lifeline.deploy-contract.v1`
 For Wave 1 planning on Lifeline `main`, the canonical deploy target is `artifactRef: docker://fawxzzy-trove:wave1-main-da6fe2a`, which deterministically yields release id `release-trove-884871743d515964`.
 The rollback target is the concrete prior release `release-trove-91140e3b6fdb0cfb` backed by `artifactRef: docker://fawxzzy-trove:pre-w4-a9c347b`.
 
+## Shared preview deployment lane
+
+The first Trove preview lane is intentionally narrow:
+
+- GitHub Actions builds a concrete image for same-repo pull requests.
+- The workflow derives a preview-scoped deploy manifest by swapping only:
+  - `artifactRef`
+  - `route.domain`
+- Lifeline `main` is checked out in CI and used as the canonical source for:
+  - dry-run planning
+  - immutable release metadata derivation
+  - single-host release activation on the preview host
+- The shared preview URL is `https://preview-trove.fawxzzy.com/`.
+
+The workflow uploads these preview deployment artifacts:
+
+- `deploy-manifest.preview.json`
+- `release-dry-run.preview.json`
+- `release-plan.preview.json`
+- `release-metadata.preview.json`
+
+The remote deploy step copies a small bundle to the preview host, pulls the concrete image, health-checks a candidate container, swaps the shared preview container on port `3000`, and then uses bundled Lifeline Wave 1 release-engine modules to persist and activate the release target under the host-local preview state root.
+
+This lane deliberately does not add:
+
+- production routing changes
+- TLS automation
+- global gateway ownership
+- branch-shaped deploy inputs
+
 ## Parity checklist
 
 - Catalog remains one-page and static-export compatible.

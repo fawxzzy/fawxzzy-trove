@@ -36,3 +36,290 @@ jobs:
 
       - name: Verify
         run: npm run verify
+
+  preview:
+    if: github.event_name == 'pull_request'
+    needs:
+      - verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      pull-requests: write
+    env:
+      PREVIEW_HOST: ${{ secrets.LIFELINE_PREVIEW_HOST }}
+      PREVIEW_USER: ${{ secrets.LIFELINE_PREVIEW_USER }}
+      PREVIEW_SSH_KEY: ${{ secrets.LIFELINE_PREVIEW_SSH_KEY }}
+      PREVIEW_KNOWN_HOSTS: ${{ secrets.LIFELINE_PREVIEW_KNOWN_HOSTS }}
+      PREVIEW_STATE_ROOT: ${{ secrets.LIFELINE_PREVIEW_STATE_ROOT }}
+      PREVIEW_REGISTRY_USERNAME: ${{ secrets.LIFELINE_PREVIEW_REGISTRY_USERNAME }}
+      PREVIEW_REGISTRY_TOKEN: ${{ secrets.LIFELINE_PREVIEW_REGISTRY_TOKEN }}
+    steps:
+      - name: Checkout Trove
+        uses: actions/checkout@v4
+
+      - name: Derive preview context
+        id: preview-context
+        shell: bash
+        run: |
+          IMAGE_NAME="ghcr.io/$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+          IMAGE_TAG="preview-pr-${{ github.event.pull_request.number }}-${GITHUB_SHA::12}"
+          IMAGE_TAG_REF="${IMAGE_NAME}:${IMAGE_TAG}"
+          PREVIEW_CAN_PUBLISH="false"
+          if [[ "${{ github.event.pull_request.head.repo.full_name }}" == "${GITHUB_REPOSITORY}" ]]; then
+            PREVIEW_CAN_PUBLISH="true"
+          fi
+          PREVIEW_CAN_DEPLOY="false"
+          if [[ "${PREVIEW_CAN_PUBLISH}" == "true" && -n "${PREVIEW_HOST}" && -n "${PREVIEW_USER}" && -n "${PREVIEW_SSH_KEY}" ]]; then
+            PREVIEW_CAN_DEPLOY="true"
+          fi
+          echo "image_name=${IMAGE_NAME}" >> "${GITHUB_OUTPUT}"
+          echo "image_tag=${IMAGE_TAG}" >> "${GITHUB_OUTPUT}"
+          echo "image_tag_ref=${IMAGE_TAG_REF}" >> "${GITHUB_OUTPUT}"
+          echo "can_publish=${PREVIEW_CAN_PUBLISH}" >> "${GITHUB_OUTPUT}"
+          echo "can_deploy=${PREVIEW_CAN_DEPLOY}" >> "${GITHUB_OUTPUT}"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.9.0"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Checkout Lifeline main
+        if: steps.preview-context.outputs.can_publish == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: fawxzzy/fawxzzy-lifeline
+          ref: main
+          path: vendor/lifeline-main
+
+      - name: Set up Docker Buildx
+        if: steps.preview-context.outputs.can_publish == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: steps.preview-context.outputs.can_publish == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and push preview image
+        if: steps.preview-context.outputs.can_publish == 'true'
+        id: docker-build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.preview-context.outputs.image_tag_ref }}
+
+      - name: Build preview image without push
+        if: steps.preview-context.outputs.can_publish != 'true'
+        shell: bash
+        run: |
+          docker build --file ./Dockerfile --tag trove-preview-local:${GITHUB_SHA::12} .
+
+      - name: Prepare preview release metadata
+        if: steps.preview-context.outputs.can_publish == 'true'
+        id: prepare-preview
+        shell: bash
+        run: |
+          ARTIFACT_REF="docker://${{ steps.preview-context.outputs.image_name }}@${{ steps.docker-build.outputs.digest }}"
+          OUTPUT_DIR="${RUNNER_TEMP}/trove-preview"
+          mkdir -p "${OUTPUT_DIR}"
+          node scripts/prepare-preview-release.mjs \
+            --artifact-ref "${ARTIFACT_REF}" \
+            --output-dir "${OUTPUT_DIR}" \
+            --lifeline-root "${GITHUB_WORKSPACE}/vendor/lifeline-main" \
+            --environment preview | tee "${OUTPUT_DIR}/preview-summary.stdout.json"
+          echo "output_dir=${OUTPUT_DIR}" >> "${GITHUB_OUTPUT}"
+          echo "artifact_ref=${ARTIFACT_REF}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload preview metadata artifact
+        if: steps.preview-context.outputs.can_publish == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: trove-preview-release
+          path: ${{ steps.prepare-preview.outputs.output_dir }}
+
+      - name: Bundle remote deploy payload
+        if: steps.preview-context.outputs.can_publish == 'true'
+        id: bundle-preview
+        shell: bash
+        run: |
+          BUNDLE_DIR="${RUNNER_TEMP}/trove-preview-bundle"
+          mkdir -p "${BUNDLE_DIR}/control-plane"
+          cp scripts/deploy-preview-remote.mjs "${BUNDLE_DIR}/deploy-preview-remote.mjs"
+          cp vendor/lifeline-main/control-plane/wave1-deploy-contract.mjs "${BUNDLE_DIR}/control-plane/wave1-deploy-contract.mjs"
+          cp vendor/lifeline-main/control-plane/wave1-release-engine.mjs "${BUNDLE_DIR}/control-plane/wave1-release-engine.mjs"
+          cp "${{ steps.prepare-preview.outputs.output_dir }}/deploy-manifest.preview.json" "${BUNDLE_DIR}/deploy-manifest.json"
+          echo "bundle_dir=${BUNDLE_DIR}" >> "${GITHUB_OUTPUT}"
+
+      - name: Configure SSH
+        if: steps.preview-context.outputs.can_deploy == 'true'
+        shell: bash
+        run: |
+          mkdir -p "${HOME}/.ssh"
+          printf '%s\n' "${PREVIEW_SSH_KEY}" > "${HOME}/.ssh/trove-preview"
+          chmod 600 "${HOME}/.ssh/trove-preview"
+          if [[ -n "${PREVIEW_KNOWN_HOSTS}" ]]; then
+            printf '%s\n' "${PREVIEW_KNOWN_HOSTS}" > "${HOME}/.ssh/known_hosts"
+          else
+            ssh-keyscan -H "${PREVIEW_HOST}" > "${HOME}/.ssh/known_hosts"
+          fi
+
+      - name: Deploy preview on shared host
+        if: steps.preview-context.outputs.can_deploy == 'true'
+        id: deploy-preview
+        continue-on-error: true
+        shell: bash
+        run: |
+          REMOTE_STATE_ROOT="${PREVIEW_STATE_ROOT:-\$HOME/lifeline-preview}"
+          REMOTE_BUNDLE="~/trove-preview-bundles/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          ssh -i "${HOME}/.ssh/trove-preview" "${PREVIEW_USER}@${PREVIEW_HOST}" "mkdir -p ~/trove-preview-bundles ${REMOTE_BUNDLE}"
+          scp -i "${HOME}/.ssh/trove-preview" -r "${{ steps.bundle-preview.outputs.bundle_dir }}/." "${PREVIEW_USER}@${PREVIEW_HOST}:${REMOTE_BUNDLE}"
+          ssh -i "${HOME}/.ssh/trove-preview" "${PREVIEW_USER}@${PREVIEW_HOST}" "\
+            mkdir -p \"${REMOTE_STATE_ROOT}\" && \
+            export PREVIEW_REGISTRY_USERNAME='${PREVIEW_REGISTRY_USERNAME}' && \
+            export PREVIEW_REGISTRY_TOKEN='${PREVIEW_REGISTRY_TOKEN}' && \
+            node \"${REMOTE_BUNDLE}/deploy-preview-remote.mjs\" \
+              --deploy-manifest \"${REMOTE_BUNDLE}/deploy-manifest.json\" \
+              --lifeline-root \"${REMOTE_BUNDLE}\" \
+              --state-root \"${REMOTE_STATE_ROOT}\" \
+              --container-name trove-preview \
+              --host-port 3000 \
+              --candidate-port 3300" | tee "${RUNNER_TEMP}/deploy-preview-result.json"
+          echo "result_path=${RUNNER_TEMP}/deploy-preview-result.json" >> "${GITHUB_OUTPUT}"
+
+      - name: Read preview summary
+        if: always()
+        id: preview-summary
+        shell: bash
+        run: |
+          node - <<'EOF'
+          const fs = require("node:fs");
+          const path = require("node:path");
+
+          const outputPath = process.env.GITHUB_OUTPUT;
+          const writeOutput = (key, value) => {
+            fs.appendFileSync(outputPath, `${key}=${String(value).replace(/\n/g, "%0A")}\n`);
+          };
+
+          const canPublish = process.env.CAN_PUBLISH === "true";
+          const canDeploy = process.env.CAN_DEPLOY === "true";
+          const prepareDir = process.env.PREPARE_DIR;
+          const deployResultPath = process.env.DEPLOY_RESULT_PATH;
+          const deployOutcome = process.env.DEPLOY_OUTCOME ?? "skipped";
+          let summary = {
+            status: "skipped",
+            previewUrl: "",
+            artifactRef: "",
+            releaseId: "",
+            detail: "",
+          };
+
+          if (canPublish && prepareDir) {
+            const prepared = JSON.parse(
+              fs.readFileSync(path.join(prepareDir, "preview-summary.json"), "utf8"),
+            );
+            summary.previewUrl = prepared.previewUrl;
+            summary.artifactRef = prepared.artifactRef;
+            summary.releaseId = prepared.releaseId;
+            summary.detail = canDeploy
+              ? "Preview image was published and deployment was attempted on the shared preview host."
+              : "Preview image was published but deployment was skipped because preview-host SSH secrets are not configured.";
+            summary.status = canDeploy ? "attempted" : "prepared";
+          } else {
+            summary.detail =
+              "This pull request is not eligible for preview publication because the head repository differs from the base repository.";
+          }
+
+          if (deployOutcome === "success" && deployResultPath && fs.existsSync(deployResultPath)) {
+            const deployed = JSON.parse(fs.readFileSync(deployResultPath, "utf8"));
+            summary.status = "deployed";
+            summary.previewUrl = deployed.previewUrl ?? summary.previewUrl;
+            summary.releaseId = deployed.releaseId ?? summary.releaseId;
+            summary.artifactRef = deployed.artifactRef ?? summary.artifactRef;
+            summary.detail = "Shared preview deployment succeeded on the self-hosted preview host.";
+          } else if (deployOutcome === "failure") {
+            summary.status = "failed";
+            summary.detail =
+              "Shared preview deployment attempted but failed. Inspect the workflow logs for the remote deploy result and rollback attempt.";
+          }
+
+          writeOutput("status", summary.status);
+          writeOutput("preview_url", summary.previewUrl);
+          writeOutput("artifact_ref", summary.artifactRef);
+          writeOutput("release_id", summary.releaseId);
+          writeOutput("detail", summary.detail);
+          EOF
+        env:
+          CAN_PUBLISH: ${{ steps.preview-context.outputs.can_publish }}
+          CAN_DEPLOY: ${{ steps.preview-context.outputs.can_deploy }}
+          PREPARE_DIR: ${{ steps.prepare-preview.outputs.output_dir }}
+          DEPLOY_RESULT_PATH: ${{ steps.deploy-preview.outputs.result_path }}
+          DEPLOY_OUTCOME: ${{ steps.deploy-preview.outcome }}
+
+      - name: Comment preview status on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = "<!-- trove-preview-status -->";
+            const status = process.env.PREVIEW_STATUS;
+            const previewUrl = process.env.PREVIEW_URL;
+            const artifactRef = process.env.ARTIFACT_REF;
+            const releaseId = process.env.RELEASE_ID;
+            const detail = process.env.DETAIL;
+
+            const lines = [
+              marker,
+              "## Trove Preview",
+              `Status: \`${status}\``,
+              previewUrl ? `Preview URL: ${previewUrl}` : "Preview URL: not available",
+              releaseId ? `Release ID: \`${releaseId}\`` : "Release ID: not available",
+              artifactRef ? `Artifact Ref: \`${artifactRef}\`` : "Artifact Ref: not available",
+              "",
+              detail,
+            ];
+
+            const body = lines.join("\n");
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+            });
+            const existing = comments.find((comment) => comment.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
+        env:
+          PREVIEW_STATUS: ${{ steps.preview-summary.outputs.status }}
+          PREVIEW_URL: ${{ steps.preview-summary.outputs.preview_url }}
+          ARTIFACT_REF: ${{ steps.preview-summary.outputs.artifact_ref }}
+          RELEASE_ID: ${{ steps.preview-summary.outputs.release_id }}
+          DETAIL: ${{ steps.preview-summary.outputs.detail }}
+
+      - name: Fail job if preview deployment failed
+        if: steps.deploy-preview.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "Shared preview deployment failed." >&2
+          exit 1
