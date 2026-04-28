@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - main
+      - codex/trove-pilot-release-cutover
 
 permissions:
   contents: read
@@ -178,8 +179,9 @@ jobs:
         shell: bash
         run: |
           REMOTE_STATE_ROOT="${PREVIEW_STATE_ROOT:-\$HOME/lifeline-preview}"
-          REMOTE_BUNDLE="~/trove-preview-bundles/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          ssh -i "${HOME}/.ssh/trove-preview" "${PREVIEW_USER}@${PREVIEW_HOST}" "mkdir -p ~/trove-preview-bundles ${REMOTE_BUNDLE}"
+          REMOTE_HOME="$(ssh -i "${HOME}/.ssh/trove-preview" "${PREVIEW_USER}@${PREVIEW_HOST}" 'printf %s "$HOME"')"
+          REMOTE_BUNDLE="${REMOTE_HOME}/trove-preview-bundles/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          ssh -i "${HOME}/.ssh/trove-preview" "${PREVIEW_USER}@${PREVIEW_HOST}" "mkdir -p \"${REMOTE_BUNDLE}\""
           scp -i "${HOME}/.ssh/trove-preview" -r "${{ steps.bundle-preview.outputs.bundle_dir }}/." "${PREVIEW_USER}@${PREVIEW_HOST}:${REMOTE_BUNDLE}"
           ssh -i "${HOME}/.ssh/trove-preview" "${PREVIEW_USER}@${PREVIEW_HOST}" "\
             mkdir -p \"${REMOTE_STATE_ROOT}\" && \
