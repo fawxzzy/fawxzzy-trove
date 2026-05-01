@@ -1,7 +1,7 @@
 {
   "contractVersion": "atlas.lifeline.deploy-contract.v1",
   "appName": "trove",
-  "artifactRef": "git+https://github.com/fawxzzy/fawxzzy-trove.git#codex/trove-one-page-cleanup",
+  "artifactRef": "docker://fawxzzy-trove:wave1-main-da6fe2a",
   "route": {
     "domain": "trove.fawxzzy.com",
     "path": "/"
@@ -20,9 +20,9 @@
     ]
   },
   "rollbackTarget": {
-    "releaseId": "pre-w4-a9c347b",
-    "artifactRef": "git+https://github.com/fawxzzy/fawxzzy-trove.git#a9c347b5bc510503691478aa680e34cfa9ab81a7",
+    "releaseId": "release-trove-91140e3b6fdb0cfb",
+    "artifactRef": "docker://fawxzzy-trove:pre-w4-a9c347b",
     "strategy": "restore",
-    "note": "Rebuild and relaunch the last pre-W4 Trove ref if the Lifeline pilot fails."
+    "note": "Restore the last known-good pre-W4 Trove pilot artifact if the Lifeline release fails."
   }
 }

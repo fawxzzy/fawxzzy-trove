@@ -1,7 +1,7 @@
 name: trove
 archetype: next-web
 repo: https://github.com/fawxzzy/fawxzzy-trove.git
-branch: codex/trove-one-page-cleanup
+branch: main
 installCommand: npm ci
 buildCommand: npm run build
 startCommand: node scripts/start-static.mjs --port 3000

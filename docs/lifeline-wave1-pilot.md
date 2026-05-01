@@ -1,6 +1,7 @@
 # Trove Lifeline Wave 1 Pilot
 
 This repo carries the Trove-side contract for the Wave 1 pilot cutover. The goal is to keep Trove app-local while matching the pinned Lifeline runtime and deploy surfaces without pulling platform logic into the app.
+The source manifest still carries `repo` plus `branch: main` because the Lifeline app-manifest contract requires them, but Wave 1 deploy truth now lives in artifact and release fields instead of branch-shaped deploy assumptions.
 
 ## Build and runtime path
 
@@ -18,8 +19,8 @@ The checked-in runtime entrypoint is `node scripts/start-static.mjs --port 3000`
 Use the checked-in `Dockerfile` to build a pilot image that matches the app-local static export runtime:
 
 ```bash
-docker build -t fawxzzy-trove:wave1 .
-docker run --rm -p 3000:3000 fawxzzy-trove:wave1
+docker build -t fawxzzy-trove:wave1-main-da6fe2a .
+docker run --rm -p 3000:3000 fawxzzy-trove:wave1-main-da6fe2a
 ```
 
 The container does not depend on Vercel-specific runtime behavior. It serves the static export directly.
@@ -54,6 +55,8 @@ pnpm lifeline logs trove 20
 ```
 
 The deploy manifest is shaped for the pinned `atlas.lifeline.deploy-contract.v1` contract and keeps rollback metadata explicit.
+For Wave 1 planning on Lifeline `main`, the canonical deploy target is `artifactRef: docker://fawxzzy-trove:wave1-main-da6fe2a`, which deterministically yields release id `release-trove-884871743d515964`.
+The rollback target is the concrete prior release `release-trove-91140e3b6fdb0cfb` backed by `artifactRef: docker://fawxzzy-trove:pre-w4-a9c347b`.
 
 ## Parity checklist
 
@@ -73,4 +76,4 @@ pnpm lifeline down trove
 pnpm lifeline status trove
 ```
 
-Rehearsal is complete when status reports the app stopped cleanly after the managed runtime was healthy. The deploy manifest rollback target points at the pre-W4 repo ref `a9c347b5bc510503691478aa680e34cfa9ab81a7`.
+Rehearsal is complete when status reports the app stopped cleanly after the managed runtime was healthy. The deploy manifest rollback target points at release `release-trove-91140e3b6fdb0cfb` and artifact `docker://fawxzzy-trove:pre-w4-a9c347b`.
