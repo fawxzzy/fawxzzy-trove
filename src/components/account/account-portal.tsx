@@ -15,6 +15,7 @@ import { productIdentity } from "@/config/product";
 import {
   callbackReceiptKey,
   callbackStateMatches,
+  confirmationStateMatches,
   parseCallbackPayload,
   parseConfirmPayload,
   parseRecoveryPayload,
@@ -1025,6 +1026,30 @@ function LinkHandler({
           return;
         }
         setReturnTo(payload.returnTo);
+        if (context.id === "fitness") {
+          let storedState: string | null = null;
+          try {
+            storedState = window.localStorage.getItem(accountContract.confirmationStateKey);
+          } catch { /* Unavailable browser storage cannot prove the initiating browser. */ }
+          if (!confirmationStateMatches(payload.state, storedState)) {
+            setNotice({
+              kind: "error",
+              text: "This Fitness confirmation does not match the browser that started it. Start again.",
+              variant: "unauthorized",
+            });
+            return;
+          }
+          try {
+            window.localStorage.removeItem(accountContract.confirmationStateKey);
+          } catch {
+            setNotice({
+              kind: "error",
+              text: "This browser cannot safely complete the Fitness confirmation. Start again.",
+              variant: "unauthorized",
+            });
+            return;
+          }
+        }
         if (!adapter) {
           setNotice({
             kind: "info",
@@ -1112,7 +1137,7 @@ function LinkHandler({
         redirectTimer.current = null;
       }
     };
-  }, [adapter, hydrated, mode]);
+  }, [adapter, context.id, hydrated, mode]);
 
   const variant = noticeVariant(notice);
   const title =

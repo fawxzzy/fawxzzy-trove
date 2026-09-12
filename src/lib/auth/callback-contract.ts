@@ -14,6 +14,7 @@ const CONFIRM_TYPES = new Set([
 ]);
 
 export type ConfirmPayload = {
+  state: string;
   tokenHash: string;
   type: "email" | "email_change" | "invite" | "magiclink" | "recovery" | "signup";
   returnTo: string;
@@ -36,10 +37,15 @@ export function parseConfirmPayload(url: URL): ConfirmPayload | null {
   if (!tokenHash || !CONFIRM_TYPES.has(type)) return null;
 
   return {
+    state: url.searchParams.get("state") ?? "",
     tokenHash,
     type: type as ConfirmPayload["type"],
     returnTo: sanitizeReturnTarget(url.searchParams.get("returnTo")),
   };
+}
+
+export function confirmationStateMatches(received: string, stored: string | null) {
+  return Boolean(received && stored && received === stored);
 }
 
 export function parseCallbackPayload(url: URL): CallbackPayload | null {

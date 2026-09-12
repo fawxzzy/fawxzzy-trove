@@ -63,6 +63,7 @@ export const accountContract = {
   rememberedIdentityKey: "fawxzzy.account.remembered-identity.v1",
   callbackStateKey: "fawxzzy.account.callback.state.v1",
   callbackReceiptPrefix: "fawxzzy.account.callback.receipt.v1",
+  confirmationStateKey: "fawxzzy.account.confirmation.state.v1",
 } as const;
 
 /**
@@ -145,12 +146,13 @@ export function accountRecoveryUrl(contextId: AccountExperienceContextId) {
   return url.href;
 }
 
-export function accountConfirmUrl(contextId: AccountExperienceContextId) {
+export function accountConfirmUrl(contextId: AccountExperienceContextId, state?: string) {
   if (contextId === "website") return accountUrls.confirm;
   const context = accountExperienceContexts[contextId];
   const url = new URL(accountContract.confirmPath, accountContract.canonicalOrigin);
   url.searchParams.set("app", contextId);
   url.searchParams.set("returnTo", new URL("/", context.destinationOrigin).href);
+  if (state) url.searchParams.set("state", state);
   return url.href;
 }
 

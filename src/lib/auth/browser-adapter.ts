@@ -164,6 +164,12 @@ function toPortalSession(session: Session | null): PortalSession | null {
   return { displayName, email: session.user.email ?? null, userId: session.user.id };
 }
 
+function createBrowserBoundConfirmationState() {
+  const bytes = new Uint8Array(32);
+  window.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+}
+
 function createSupabaseAdapter(
   url: string,
   publishableKey: string,
@@ -239,15 +245,44 @@ function createSupabaseAdapter(
     },
     async signUp(email, password, username, contextId) {
       authMutationEpoch += 1;
-      const { data, error } = await client.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { display_name: username, username },
-          emailRedirectTo: accountConfirmUrl(contextId),
-        },
-      });
-      if (error) throw error;
+      let confirmationState: string | undefined;
+      if (contextId === "fitness") {
+        if (!browserStorage.durable) {
+          throw new Error("This browser cannot safely start a Fitness confirmation yet.");
+        }
+        confirmationState = createBrowserBoundConfirmationState();
+        try {
+          browserStorage.storage.setItem(accountContract.confirmationStateKey, confirmationState);
+        } catch {
+          throw new Error("This browser cannot safely start a Fitness confirmation yet.");
+        }
+      }
+      let result: Awaited<ReturnType<typeof client.auth.signUp>>;
+      try {
+        result = await client.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { display_name: username, username },
+            emailRedirectTo: accountConfirmUrl(contextId, confirmationState),
+          },
+        });
+      } catch (error) {
+        if (confirmationState) {
+          browserStorage.storage.removeItem(accountContract.confirmationStateKey);
+        }
+        throw error;
+      }
+      const { data, error } = result;
+      if (error) {
+        if (confirmationState) {
+          browserStorage.storage.removeItem(accountContract.confirmationStateKey);
+        }
+        throw error;
+      }
+      if (confirmationState && data.session) {
+        browserStorage.storage.removeItem(accountContract.confirmationStateKey);
+      }
       return toPortalSession(data.session);
     },
     async handoffToFitness(returnTarget, expectedUserId) {

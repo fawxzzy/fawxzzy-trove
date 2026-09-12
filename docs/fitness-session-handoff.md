@@ -54,6 +54,13 @@ session that cannot survive navigation.
 Local persistence is awaited to completion rather than raced against a timer,
 so a rejected timeout cannot continue later and overwrite a newer session.
 
+Fitness email confirmations are additionally bound to the browser that started
+signup. The portal stores a one-use random state in that browser's same-origin
+durable storage, includes the opaque state in the approved confirmation return URL, and
+refuses to verify or hand off a forwarded Fitness confirmation when the state is
+absent or different. The state is consumed before verification; a failed or
+cross-browser attempt must start again.
+
 Both POSTs use explicit JSON, credentialed CORS, no-store, no referrer, error on
 redirect, a 10s request deadline and zero automatic retries. Invalid response
 shapes, expired/replayed/mismatched challenges, invalid sessions, timeouts and

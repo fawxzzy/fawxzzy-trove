@@ -28,6 +28,7 @@ import {
 import {
   callbackReceiptKey,
   callbackStateMatches,
+  confirmationStateMatches,
   parseCallbackPayload,
   parseConfirmPayload,
   parseRecoveryPayload,
@@ -580,13 +581,17 @@ test("cooldown ticks terminate at expiry and unmount cleanup cancels pending wor
 });
 
 test("confirm and callback parsers accept only the expected one-time material", () => {
+  expect(accountConfirmUrl("fitness", "browser-state")).toBe(
+    "https://account.fawxzzy.com/auth/confirm?app=fitness&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F&state=browser-state",
+  );
   const confirm = parseConfirmPayload(
     new URL(
-      "https://account.fawxzzy.com/auth/confirm?token_hash=hash&type=signup&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F",
+      "https://account.fawxzzy.com/auth/confirm?token_hash=hash&type=signup&state=browser-state&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F",
     ),
   );
   expect(confirm).toEqual({
     returnTo: "https://fitness.fawxzzy.com/",
+    state: "browser-state",
     tokenHash: "hash",
     type: "signup",
   });
@@ -603,6 +608,8 @@ test("confirm and callback parsers accept only the expected one-time material", 
   ).toBeNull();
   expect(callbackStateMatches("same", "same")).toBe(true);
   expect(callbackStateMatches("same", "other")).toBe(false);
+  expect(confirmationStateMatches("same", "same")).toBe(true);
+  expect(confirmationStateMatches("same", null)).toBe(false);
   expect(callbackReceiptKey("stable-code")).toBe(callbackReceiptKey("stable-code"));
 
   expect(
@@ -1528,8 +1535,10 @@ test("recovery exchanges PKCE before exposing the password form", async ({ brows
 });
 
 test("confirmation is one-time, sanitized, and preserves only an approved return", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate((key) => window.localStorage.setItem(key, "fitness-confirm-state"), accountContract.confirmationStateKey);
   await page.goto(
-    "/auth/confirm?app=fitness&auth_test=success&token_hash=private-hash&type=signup&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F",
+    "/auth/confirm?app=fitness&auth_test=success&token_hash=private-hash&type=signup&state=fitness-confirm-state&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F",
   );
   await expect(page.getByRole("status")).toContainText("Confirmation complete.");
   await expect(page).toHaveURL(/\/auth\/confirm$/);
@@ -1537,14 +1546,28 @@ test("confirmation is one-time, sanitized, and preserves only an approved return
     "href",
     "https://fitness.fawxzzy.com/",
   );
+  await expect.poll(() => page.evaluate((key) => window.localStorage.getItem(key), accountContract.confirmationStateKey)).toBeNull();
 });
 
 test("Fitness confirmation fails closed when its secure session handoff cannot complete", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate((key) => window.localStorage.setItem(key, "fitness-confirm-state"), accountContract.confirmationStateKey);
   await page.goto(
-    "/auth/confirm?app=fitness&auth_test=fitness-handoff-error&token_hash=private-hash&type=signup&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F",
+    "/auth/confirm?app=fitness&auth_test=fitness-handoff-error&token_hash=private-hash&type=signup&state=fitness-confirm-state&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F",
   );
   await expect(page.locator('[data-auth-state="recoverable-error"] [role="alert"]')).toContainText(
     "Fitness connection unavailable",
+  );
+  await expect(page.getByRole("link", { name: "Continue safely" })).toHaveCount(0);
+  await expect(page).toHaveURL(/\/auth\/confirm$/);
+});
+
+test("Fitness confirmation rejects a link forwarded to another browser", async ({ page }) => {
+  await page.goto(
+    "/auth/confirm?app=fitness&auth_test=success&token_hash=private-hash&type=signup&state=forwarded-state&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F",
+  );
+  await expect(page.locator('[data-auth-state="unauthorized"] [role="alert"]')).toContainText(
+    "does not match the browser that started it",
   );
   await expect(page.getByRole("link", { name: "Continue safely" })).toHaveCount(0);
   await expect(page).toHaveURL(/\/auth\/confirm$/);
