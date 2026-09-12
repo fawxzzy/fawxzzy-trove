@@ -1,8 +1,9 @@
 # Fitness session handoff v1 (source preparation)
 
-Status: disabled in deployed-runtime code. No database, provider, credential,
-or production changes are made by this source candidate. Fitness owns the
-consumer and durable challenge store. Socials owns the portal producer.
+Status: active in source and pending the paired verified production release.
+No database, provider, credential, or production changes are made by this
+source candidate. Fitness owns the consumer and durable challenge store.
+Socials owns the portal producer.
 
 ## Wire contract
 
@@ -17,7 +18,11 @@ consumer and durable challenge store. Socials owns the portal producer.
    Store the binding hash, ID, exact portal origin, `fitness` audience, issuer
    `https://bxtcuhkotumitoqtrcej.supabase.co/auth/v1`, expiry and normalized path.
    Set `__Host-fitness-handoff`: HttpOnly, Secure, SameSite=Lax, Path=/,
-   Max-Age=60, no Domain. Return exactly `{ok:true,handoffId,returnTo}`.
+   Max-Age=60, no Domain. Return exactly
+   `{ok:true,handoffId,readiness:{authProjectRef,contractVersion,handoffStore,sourceCommit},returnTo}`.
+   The readiness values must identify master project `bxtcuhkotumitoqtrcej`,
+   contract `fitness.auth-handoff-readiness.v1`, store state `available`, and
+   the exact reviewed Fitness merge approved by the portal source.
 4. Portal retrieves the current session from its existing Supabase client,
    checks the expected user has not changed, then POSTs
    `{handoffId,accessToken,refreshToken}` to Fitness `/auth/session-sync`.
@@ -36,8 +41,9 @@ consumer and durable challenge store. Socials owns the portal producer.
    another child pair before redirect, because both products must retain the
    same final refresh lineage.
 
-Each portal handoff is bound to the current local Auth mutation epoch. Sign-out
-or a newer login invalidates the attempt. The portal checks the epoch and
+Each portal handoff is bound to the current local Auth mutation epoch and a
+same-origin cross-tab Auth generation. Sign-out, account mutation, or a newer
+login invalidates the attempt before its shared session write. The portal checks the epoch and
 expected user before accepting the consume result, again immediately before
 local persistence, and again before navigation. The browser Auth storage adapter
 also fences the exact returned access-token write, so an epoch change during the
@@ -48,6 +54,13 @@ fallback while the cross-app handoff fails closed instead of redirecting with a
 session that cannot survive navigation.
 Local persistence is awaited to completion rather than raced against a timer,
 so a rejected timeout cannot continue later and overwrite a newer session.
+
+Fitness email confirmations are additionally bound to the browser that started
+signup. The portal stores a one-use random state in that browser's same-origin
+durable storage, includes the opaque state in the approved confirmation return URL, and
+refuses to verify or hand off a forwarded Fitness confirmation when the state is
+absent or different. The state is consumed before verification; a failed or
+cross-browser attempt must start again.
 
 Both POSTs use explicit JSON, credentialed CORS, no-store, no referrer, error on
 redirect, a 10s request deadline and zero automatic retries. Invalid response
@@ -72,11 +85,14 @@ an injected in-memory fixture is not a deployable implementation. A boolean or
 provider config value alone is not readiness proof. Cross-origin CORS must not
 weaken Fitness's separate same-origin mirror or DELETE policy.
 
-`FITNESS_HANDOFF_RUNTIME_READY` remains false until a separately reviewed
-activation binds the implemented consumer, atomic-store concurrency/restart
-proof and authoritative master Auth/data production postimage. Local adapters
-never transmit synthetic credentials to live services. Website and Mazer
-continuations remain unchanged by this Fitness-only source cluster.
+The portal starts only the credential-free handshake from
+`https://account.fawxzzy.com`. Before the portal reads or sends a session pair,
+Fitness must return the exact `fitness.auth-handoff-readiness.v1` object from
+the live request. That object binds the reviewed deployed source commit, master
+Auth project, and available handoff store. A legacy, rolled-back, non-master,
+malformed, or source-drifted response fails closed before credential retrieval.
+Local adapters never transmit synthetic credentials to live services. Website
+and Mazer continuations remain unchanged by this Fitness-only activation.
 
 Acceptance must cover native login and portal sign-in, Fitness cookie creation,
 entry, first authenticated data read, navigation, refresh persistence and

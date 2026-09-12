@@ -60,9 +60,11 @@ export const accountContract = {
     "http://127.0.0.1:4313",
   ],
   storageKey: "fawxzzy.account.auth.v1",
+  authGenerationKey: "fawxzzy.account.auth-generation.v1",
   rememberedIdentityKey: "fawxzzy.account.remembered-identity.v1",
   callbackStateKey: "fawxzzy.account.callback.state.v1",
   callbackReceiptPrefix: "fawxzzy.account.callback.receipt.v1",
+  confirmationStateKey: "fawxzzy.account.confirmation.state.v1",
 } as const;
 
 /**
@@ -70,8 +72,9 @@ export const accountContract = {
  * legal destinations, and the eventual allowlisted return destination. They
  * never select an Auth provider, callback, session, or credential boundary.
  * Every registered presentation is safe to render on the account host. Fitness
- * and Mazer consumer integration remains pending until their owner repositories
- * adopt the broker contract from reviewed exact heads.
+ * Fitness consumer integration is active only through the separately
+ * source-bound runtime activation contract. Mazer remains pending until its
+ * owner repository adopts the broker contract from a reviewed exact head.
  */
 export const accountExperienceContexts: Record<
   AccountExperienceContextId,
@@ -90,7 +93,7 @@ export const accountExperienceContexts: Record<
   },
   fitness: {
     accentRgb: "160 223 56",
-    consumerIntegration: "pending",
+    consumerIntegration: "active",
     destinationOrigin: accountContract.productOrigins.fitness,
     id: "fitness",
     legalLinks: [
@@ -144,12 +147,13 @@ export function accountRecoveryUrl(contextId: AccountExperienceContextId) {
   return url.href;
 }
 
-export function accountConfirmUrl(contextId: AccountExperienceContextId) {
+export function accountConfirmUrl(contextId: AccountExperienceContextId, state?: string) {
   if (contextId === "website") return accountUrls.confirm;
   const context = accountExperienceContexts[contextId];
   const url = new URL(accountContract.confirmPath, accountContract.canonicalOrigin);
   url.searchParams.set("app", contextId);
   url.searchParams.set("returnTo", new URL("/", context.destinationOrigin).href);
+  if (state) url.searchParams.set("state", state);
   return url.href;
 }
 

@@ -12,7 +12,7 @@ import {
 import { isBrowserSafeSupabasePublicKey } from "@/lib/auth/supabase-public-key.mjs";
 import {
   completeFitnessHandoff, fitnessReturnPath, FitnessHandoffError,
-  FITNESS_HANDOFF_RUNTIME_READY,
+  fitnessHandoffRuntimeReady,
 } from "@/lib/auth/fitness-handoff";
 
 export type PortalSession = {
@@ -149,7 +149,7 @@ export async function persistVerifiedFitnessSession(
 }
 
 export type PortalAuthAdapterDependencies = {
-  createLiveAdapter(url: string, publishableKey: string): PortalAuthAdapter;
+  createLiveAdapter(url: string, publishableKey: string, runtimeOrigin: string): PortalAuthAdapter;
   readPublicConfig(): PublicAuthConfig | null;
 };
 
@@ -164,13 +164,66 @@ function toPortalSession(session: Session | null): PortalSession | null {
   return { displayName, email: session.user.email ?? null, userId: session.user.id };
 }
 
-function createSupabaseAdapter(url: string, publishableKey: string): PortalAuthAdapter {
+function createBrowserBoundConfirmationState() {
+  const bytes = new Uint8Array(32);
+  window.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+export function createAuthGenerationCoordinator(
+  storage: BrowserAuthStorage,
+  durable = true,
+  createGeneration: () => string = createBrowserBoundConfirmationState,
+) {
+  const read = () => {
+    if (!durable) return null;
+    try {
+      const value = storage.getItem(accountContract.authGenerationKey);
+      return value && /^[a-f0-9]{64}$/.test(value) ? value : null;
+    } catch {
+      return null;
+    }
+  };
+  const advance = () => {
+    if (!durable) return null;
+    try {
+      const value = createGeneration();
+      if (!/^[a-f0-9]{64}$/.test(value)) return null;
+      storage.setItem(accountContract.authGenerationKey, value);
+      return value;
+    } catch {
+      return null;
+    }
+  };
+  if (!read()) advance();
+  return {
+    advance,
+    current: read,
+    matches(expected: string | null) {
+      return Boolean(expected && read() === expected);
+    },
+  };
+}
+
+function createSupabaseAdapter(
+  url: string,
+  publishableKey: string,
+  runtimeOrigin: string,
+): PortalAuthAdapter {
   if (!isBrowserSafeSupabasePublicKey(publishableKey)) {
     throw new Error("Shared account services are not connected on this deployment yet.");
   }
 
   let authMutationEpoch = 0;
   const browserStorage = resolveBrowserAuthStorage();
+  const authGeneration = createAuthGenerationCoordinator(
+    browserStorage.storage,
+    browserStorage.durable,
+  );
+  const beginAuthMutation = () => {
+    authMutationEpoch += 1;
+    authGeneration.advance();
+  };
   const fitnessCommitFence = createFitnessCommitFencedStorage(
     browserStorage.storage,
     browserStorage.durable,
@@ -200,7 +253,7 @@ function createSupabaseAdapter(url: string, publishableKey: string): PortalAuthA
       return () => data.subscription.unsubscribe();
     },
     async signIn(identifier, password) {
-      authMutationEpoch += 1;
+      beginAuthMutation();
       if (identifier.includes("@")) {
         const { data, error } = await client.auth.signInWithPassword({ email: identifier, password });
         if (error) throw error;
@@ -234,21 +287,52 @@ function createSupabaseAdapter(url: string, publishableKey: string): PortalAuthA
       return toPortalSession(data.session);
     },
     async signUp(email, password, username, contextId) {
-      authMutationEpoch += 1;
-      const { data, error } = await client.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { display_name: username, username },
-          emailRedirectTo: accountConfirmUrl(contextId),
-        },
-      });
-      if (error) throw error;
+      beginAuthMutation();
+      let confirmationState: string | undefined;
+      if (contextId === "fitness") {
+        if (!browserStorage.durable) {
+          throw new Error("This browser cannot safely start a Fitness confirmation yet.");
+        }
+        confirmationState = createBrowserBoundConfirmationState();
+        try {
+          browserStorage.storage.setItem(accountContract.confirmationStateKey, confirmationState);
+        } catch {
+          throw new Error("This browser cannot safely start a Fitness confirmation yet.");
+        }
+      }
+      let result: Awaited<ReturnType<typeof client.auth.signUp>>;
+      try {
+        result = await client.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { display_name: username, username },
+            emailRedirectTo: accountConfirmUrl(contextId, confirmationState),
+          },
+        });
+      } catch (error) {
+        if (confirmationState) {
+          browserStorage.storage.removeItem(accountContract.confirmationStateKey);
+        }
+        throw error;
+      }
+      const { data, error } = result;
+      if (error) {
+        if (confirmationState) {
+          browserStorage.storage.removeItem(accountContract.confirmationStateKey);
+        }
+        throw error;
+      }
+      if (confirmationState && data.session) {
+        browserStorage.storage.removeItem(accountContract.confirmationStateKey);
+      }
       return toPortalSession(data.session);
     },
     async handoffToFitness(returnTarget, expectedUserId) {
       const attemptEpoch = authMutationEpoch;
-      const isEpochCurrent = () => authMutationEpoch === attemptEpoch;
+      const attemptGeneration = authGeneration.current();
+      const isEpochCurrent = () => authMutationEpoch === attemptEpoch &&
+        authGeneration.matches(attemptGeneration);
       const isAttemptCurrent = async () => {
         if (!isEpochCurrent()) return false;
         const { data, error } = await client.auth.getSession();
@@ -256,7 +340,7 @@ function createSupabaseAdapter(url: string, publishableKey: string): PortalAuthA
           isEpochCurrent();
       };
       return completeFitnessHandoff(returnTarget, {
-        enabled: FITNESS_HANDOFF_RUNTIME_READY,
+        enabled: fitnessHandoffRuntimeReady(runtimeOrigin),
         async persistSession(session) {
           await fitnessCommitFence.run(session.accessToken, isEpochCurrent, () =>
             persistVerifiedFitnessSession(client.auth, session, expectedUserId, isAttemptCurrent));
@@ -272,7 +356,7 @@ function createSupabaseAdapter(url: string, publishableKey: string): PortalAuthA
       });
     },
     async signOut() {
-      authMutationEpoch += 1;
+      beginAuthMutation();
       const { error } = await client.auth.signOut({ scope: "local" });
       if (error) throw error;
     },
@@ -283,21 +367,23 @@ function createSupabaseAdapter(url: string, publishableKey: string): PortalAuthA
       if (error) throw error;
     },
     async updateEmail(email) {
+      beginAuthMutation();
       const { error } = await client.auth.updateUser({ email });
       if (error) throw error;
     },
     async updatePassword(password) {
+      beginAuthMutation();
       const { error } = await client.auth.updateUser({ password });
       if (error) throw error;
     },
     async confirm(tokenHash, type) {
-      authMutationEpoch += 1;
+      beginAuthMutation();
       const { data, error } = await client.auth.verifyOtp({ token_hash: tokenHash, type });
       if (error) throw error;
       return toPortalSession(data.session);
     },
     async exchangeCode(code) {
-      authMutationEpoch += 1;
+      beginAuthMutation();
       const { data, error } = await client.auth.exchangeCodeForSession(code);
       if (error) throw error;
       return toPortalSession(data.session);
@@ -475,10 +561,14 @@ export function resolvePortalAuthAdapter(
   if (dependencies !== defaultDependencies) {
     return {
       status: "ready",
-      adapter: dependencies.createLiveAdapter(config.url, config.publishableKey),
+      adapter: dependencies.createLiveAdapter(config.url, config.publishableKey, location.origin),
     };
   }
 
-  supabaseAdapter ??= dependencies.createLiveAdapter(config.url, config.publishableKey);
+  supabaseAdapter ??= dependencies.createLiveAdapter(
+    config.url,
+    config.publishableKey,
+    location.origin,
+  );
   return { status: "ready", adapter: supabaseAdapter };
 }

@@ -15,6 +15,7 @@ import { productIdentity } from "@/config/product";
 import {
   callbackReceiptKey,
   callbackStateMatches,
+  confirmationStateMatches,
   parseCallbackPayload,
   parseConfirmPayload,
   parseRecoveryPayload,
@@ -169,6 +170,25 @@ function contextualPath(path: string, context: AccountExperienceContext) {
   const url = new URL(path, accountContract.canonicalOrigin);
   url.searchParams.set("app", context.id);
   return `${url.pathname}${url.search}`;
+}
+
+function isFitnessReturnTarget(target: string) {
+  try {
+    return new URL(sanitizeReturnTarget(target)).origin ===
+      new URL(accountContract.productOrigins.fitness).origin;
+  } catch {
+    return false;
+  }
+}
+
+async function completeAuthenticatedReturn(
+  adapter: PortalAuthAdapter,
+  target: string,
+  session: PortalSession | null,
+) {
+  if (!isFitnessReturnTarget(target)) return sanitizeReturnTarget(target);
+  if (!session) throw new FitnessHandoffError();
+  return adapter.handoffToFitness(target, session.userId);
 }
 
 function AuthLiveNotice({ notice }: { notice: Notice | null }) {
@@ -385,6 +405,22 @@ function LoginPanel({
           const identity = session.displayName || submittedUsername;
           writeRememberedIdentity(identity);
           setRememberedIdentity(identity);
+          if (context.id === "fitness") {
+            const destinationUrl = new URL(
+              sanitizeContextReturnTarget(
+                new URLSearchParams(window.location.search).get("returnTo"),
+                context,
+              ),
+            );
+            const destination = await adapter.handoffToFitness(destinationUrl.href, session.userId);
+            transient.show({ kind: "success", text: safeAuthSuccess("signup") });
+            if (classifyRuntimeOrigin(window.location.origin) === "local-test") {
+              document.documentElement.dataset.postAuthDestination = destination;
+            } else {
+              window.location.assign(destination);
+            }
+            return;
+          }
         }
         transient.show({ kind: "success", text: safeAuthSuccess("signup") });
         return;
@@ -990,6 +1026,30 @@ function LinkHandler({
           return;
         }
         setReturnTo(payload.returnTo);
+        if (isFitnessReturnTarget(payload.returnTo)) {
+          let storedState: string | null = null;
+          try {
+            storedState = window.localStorage.getItem(accountContract.confirmationStateKey);
+          } catch { /* Unavailable browser storage cannot prove the initiating browser. */ }
+          if (!confirmationStateMatches(payload.state, storedState)) {
+            setNotice({
+              kind: "error",
+              text: "This Fitness confirmation does not match the browser that started it. Start again.",
+              variant: "unauthorized",
+            });
+            return;
+          }
+          try {
+            window.localStorage.removeItem(accountContract.confirmationStateKey);
+          } catch {
+            setNotice({
+              kind: "error",
+              text: "This browser cannot safely complete the Fitness confirmation. Start again.",
+              variant: "unauthorized",
+            });
+            return;
+          }
+        }
         if (!adapter) {
           setNotice({
             kind: "info",
@@ -1000,8 +1060,19 @@ function LinkHandler({
         }
         adapter
           .confirm(payload.tokenHash, payload.type)
-          .then(() => setNotice({ kind: "success", text: "Confirmation complete." }))
-          .catch(() => setNotice({ kind: "error", text: safeAuthError("confirm") }));
+          .then(async (session) => {
+            const destination = await completeAuthenticatedReturn(
+              adapter,
+              payload.returnTo,
+              session,
+            );
+            setReturnTo(destination);
+            setNotice({ kind: "success", text: "Confirmation complete." });
+          })
+          .catch((error) => setNotice({
+            kind: "error",
+            text: error instanceof FitnessHandoffError ? error.message : safeAuthError("confirm"),
+          }));
         return;
       }
 
@@ -1041,13 +1112,22 @@ function LinkHandler({
       }
       adapter
         .exchangeCode(payload.code)
-        .then(() => {
+        .then(async (session) => {
+          const destination = await completeAuthenticatedReturn(
+            adapter,
+            payload.returnTo,
+            session,
+          );
           window.sessionStorage.setItem(receipt, "complete");
           window.sessionStorage.removeItem(accountContract.callbackStateKey);
+          setReturnTo(destination);
           setNotice({ kind: "success", text: "Sign-in handoff complete." });
-          scheduleRedirect(payload.returnTo);
+          scheduleRedirect(destination);
         })
-        .catch(() => setNotice({ kind: "error", text: safeAuthError("callback") }));
+        .catch((error) => setNotice({
+          kind: "error",
+          text: error instanceof FitnessHandoffError ? error.message : safeAuthError("callback"),
+        }));
     });
 
     return () => {
@@ -1057,7 +1137,7 @@ function LinkHandler({
         redirectTimer.current = null;
       }
     };
-  }, [adapter, hydrated, mode]);
+  }, [adapter, context.id, hydrated, mode]);
 
   const variant = noticeVariant(notice);
   const title =

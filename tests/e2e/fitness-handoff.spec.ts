@@ -1,20 +1,28 @@
 import { expect, test } from "@playwright/test";
 import {
+  createAuthGenerationCoordinator,
   createFitnessCommitFencedStorage,
   persistVerifiedFitnessSession,
   resolveBrowserAuthStorage,
   resolvePortalAuthAdapter,
 } from "../../src/lib/auth/browser-adapter";
 import {
-  completeFitnessHandoff, fitnessReturnPath, FITNESS_HANDOFF_RUNTIME_READY,
-  FITNESS_HANDOFF_UNAVAILABLE,
+  completeFitnessHandoff, fitnessHandoffRuntimeReady, fitnessReturnPath,
+  FITNESS_HANDOFF_ACTIVATION, FITNESS_HANDOFF_MASTER_PROJECT_REF,
+  FITNESS_HANDOFF_READINESS_CONTRACT_VERSION, FITNESS_HANDOFF_UNAVAILABLE,
 } from "../../src/lib/auth/fitness-handoff";
 
 const id = "a".repeat(43);
 const origin = "https://fitness.fawxzzy.com";
 const pair = { accessToken: "synthetic-access", refreshToken: "synthetic-refresh" };
 const rotatedPair = { accessToken: "rotated-access", refreshToken: "rotated-refresh" };
-const begin = { ok: true, handoffId: id, returnTo: "/today" };
+const readiness = {
+  authProjectRef: FITNESS_HANDOFF_MASTER_PROJECT_REF,
+  contractVersion: FITNESS_HANDOFF_READINESS_CONTRACT_VERSION,
+  handoffStore: "available",
+  sourceCommit: FITNESS_HANDOFF_ACTIVATION.fitnessConsumerMerge,
+};
+const begin = { ok: true, handoffId: id, readiness, returnTo: "/today" };
 const end = { ok: true, returnTo: "/today", session: rotatedPair };
 const persistSession = async () => undefined;
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), {
@@ -32,8 +40,26 @@ function fixture(responses: Response[]) {
   return { calls, request };
 }
 
-test("Fitness handoff is disabled for production preparation without any credential read or request", async () => {
-  expect(FITNESS_HANDOFF_RUNTIME_READY).toBe(false);
+test("Fitness handoff activates only on the canonical account runtime with exact evidence", () => {
+  expect(fitnessHandoffRuntimeReady("https://account.fawxzzy.com")).toBe(true);
+  for (const runtimeOrigin of [
+    "http://127.0.0.1:3210",
+    "https://fawxzzyweb-preview.vercel.app",
+    "https://evil.test",
+    "not a URL",
+  ]) {
+    expect(fitnessHandoffRuntimeReady(runtimeOrigin)).toBe(false);
+  }
+
+  for (const activation of [
+    { ...FITNESS_HANDOFF_ACTIVATION, state: "inactive" as const },
+    { ...FITNESS_HANDOFF_ACTIVATION, fitnessConsumerMerge: "invalid" },
+  ]) {
+    expect(fitnessHandoffRuntimeReady("https://account.fawxzzy.com", activation)).toBe(false);
+  }
+});
+
+test("inactive Fitness handoff fails before any credential read or request", async () => {
   let reads = 0;
   const f = fixture([]);
   await expect(completeFitnessHandoff("/today", {
@@ -85,6 +111,12 @@ for (const response of [
   null, [], { ...begin, ok: false }, { ...begin, handoffId: "short" },
   { ...begin, handoffId: "/".repeat(43) }, { ...begin, returnTo: "https://evil.test" },
   { ...begin, returnTo: "/entry" }, { ...begin, accessToken: "must-not-echo" },
+  { ...begin, readiness: null },
+  { ...begin, readiness: { ...readiness, authProjectRef: "legacy-project" } },
+  { ...begin, readiness: { ...readiness, contractVersion: "legacy-contract" } },
+  { ...begin, readiness: { ...readiness, handoffStore: "unavailable" } },
+  { ...begin, readiness: { ...readiness, sourceCommit: "0".repeat(40) } },
+  { ...begin, readiness: { ...readiness, extra: "must-not-accept" } },
 ]) {
   test(`malformed begin is terminal ${JSON.stringify(response)}`, async () => {
     const f = fixture([json(response)]);
@@ -252,6 +284,52 @@ test("an Auth epoch change fences the delayed SDK storage commit itself", async 
   await expect(persistence).rejects.toThrow(FITNESS_HANDOFF_UNAVAILABLE);
   expect(writes).toEqual([]);
   expect(stored.size).toBe(0);
+});
+
+test("a two-tab Auth generation change fences the final shared session write", async () => {
+  const stored = new Map<string, string>();
+  const sessionWrites: string[] = [];
+  const storage = {
+    getItem: (key: string) => stored.get(key) ?? null,
+    removeItem: (key: string) => { stored.delete(key); },
+    setItem: (key: string, value: string) => {
+      if (key === "session") sessionWrites.push(value);
+      stored.set(key, value);
+    },
+  };
+  let generation = 0;
+  const nextGeneration = () => (++generation).toString(16).padStart(64, "0");
+  const firstTab = createAuthGenerationCoordinator(storage, true, nextGeneration);
+  const secondTab = createAuthGenerationCoordinator(storage, true, nextGeneration);
+  const startingGeneration = firstTab.current();
+  const fence = createFitnessCommitFencedStorage(storage);
+  let releaseSdkLookup!: () => void;
+  const sdkLookup = new Promise<void>((resolve) => { releaseSdkLookup = resolve; });
+  const auth = {
+    async getUser() {
+      return { data: { user: { id: "expected-user" } }, error: null };
+    },
+    async setSession(session: { access_token: string; refresh_token: string }) {
+      await sdkLookup;
+      fence.storage.setItem("session", JSON.stringify(session));
+      return { data: { session: { user: { id: "expected-user" } } }, error: null };
+    },
+  };
+  const persistence = fence.run(
+    rotatedPair.accessToken,
+    () => firstTab.matches(startingGeneration),
+    () => persistVerifiedFitnessSession(
+      auth,
+      rotatedPair,
+      "expected-user",
+      () => firstTab.matches(startingGeneration),
+    ),
+  );
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  secondTab.advance();
+  releaseSdkLookup();
+  await expect(persistence).rejects.toThrow(FITNESS_HANDOFF_UNAVAILABLE);
+  expect(sessionWrites).toEqual([]);
 });
 
 test("the storage fence performs its final epoch comparison synchronously", async () => {

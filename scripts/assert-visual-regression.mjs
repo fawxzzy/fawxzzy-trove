@@ -125,6 +125,9 @@ try {
       if (response?.status() !== expectedStatus) {
         throw new Error(`${browserContract.id} ${route.path} returned ${response?.status() ?? "no response"}.`);
       }
+      if (route.id === "confirm" || route.id === "callback") {
+        await page.locator('[data-auth-state]:not([data-auth-state="pending"])').waitFor();
+      }
       await page.evaluate(() => document.fonts.ready);
       const screenshot = await page.screenshot({ fullPage: true, animations: "disabled" });
       const key = `${browserContract.id}:${route.id}`;

@@ -28,6 +28,7 @@ import {
 import {
   callbackReceiptKey,
   callbackStateMatches,
+  confirmationStateMatches,
   parseCallbackPayload,
   parseConfirmPayload,
   parseRecoveryPayload,
@@ -90,13 +91,13 @@ test("auth-family documentation locks Fitness structure and product-owned themin
   expect(contract).not.toContain("one short supporting sentence");
 });
 
-test("one presentation registry renders every product without claiming consumer adoption", () => {
+test("one presentation registry renders every product with exact consumer adoption", () => {
   expect(resolveAccountExperienceContext("website")).toEqual(accountExperienceContexts.website);
   expect(resolveAccountExperienceContext("fitness")).toEqual(accountExperienceContexts.fitness);
   expect(resolveAccountExperienceContext("mazer")).toEqual(accountExperienceContexts.mazer);
   expect(resolveAccountExperienceContext("unknown")).toEqual(accountExperienceContexts.website);
   expect(accountExperienceContexts.website.consumerIntegration).toBe("active");
-  expect(accountExperienceContexts.fitness.consumerIntegration).toBe("pending");
+  expect(accountExperienceContexts.fitness.consumerIntegration).toBe("active");
   expect(accountExperienceContexts.mazer.consumerIntegration).toBe("pending");
   expect(accountExperienceContexts.fitness.legalLinks).toEqual([
     { href: "https://fitness.fawxzzy.com/privacy", label: "Privacy Policy" },
@@ -580,13 +581,17 @@ test("cooldown ticks terminate at expiry and unmount cleanup cancels pending wor
 });
 
 test("confirm and callback parsers accept only the expected one-time material", () => {
+  expect(accountConfirmUrl("fitness", "browser-state")).toBe(
+    "https://account.fawxzzy.com/auth/confirm?app=fitness&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F&state=browser-state",
+  );
   const confirm = parseConfirmPayload(
     new URL(
-      "https://account.fawxzzy.com/auth/confirm?token_hash=hash&type=signup&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F",
+      "https://account.fawxzzy.com/auth/confirm?token_hash=hash&type=signup&state=browser-state&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F",
     ),
   );
   expect(confirm).toEqual({
     returnTo: "https://fitness.fawxzzy.com/",
+    state: "browser-state",
     tokenHash: "hash",
     type: "signup",
   });
@@ -603,6 +608,8 @@ test("confirm and callback parsers accept only the expected one-time material", 
   ).toBeNull();
   expect(callbackStateMatches("same", "same")).toBe(true);
   expect(callbackStateMatches("same", "other")).toBe(false);
+  expect(confirmationStateMatches("same", "same")).toBe(true);
+  expect(confirmationStateMatches("same", null)).toBe(false);
   expect(callbackReceiptKey("stable-code")).toBe(callbackReceiptKey("stable-code"));
 
   expect(
@@ -1071,6 +1078,33 @@ test("signup enforces ten characters and accepts long passwords", async ({ brows
   await expect(page.getByRole("status")).toContainText("account request is complete");
 });
 
+test("a session-bearing Fitness signup completes the secure consumer handoff", async ({ page }) => {
+  await page.goto("/login?app=fitness&auth_test=success&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2Ftoday");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByLabel("Username").fill("new.fitness.user");
+  await page.getByLabel("Email").fill("new.fitness.user@example.test");
+  await page.getByLabel("Password", { exact: true }).fill("correct-horse-battery-staple");
+  await page.locator(".account-auth-dock").getByRole("button", { name: "Create account" }).click();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-post-auth-destination",
+    "https://fitness.fawxzzy.com/today",
+  );
+  await expect(page.getByRole("status")).toContainText(safeAuthSuccess("signup"));
+});
+
+test("a Fitness signup never reports success when its consumer handoff fails", async ({ page }) => {
+  await page.goto("/login?app=fitness&auth_test=fitness-handoff-error");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByLabel("Username").fill("new.fitness.user");
+  await page.getByLabel("Email").fill("new.fitness.user@example.test");
+  await page.getByLabel("Password", { exact: true }).fill("correct-horse-battery-staple");
+  await page.locator(".account-auth-dock").getByRole("button", { name: "Create account" }).click();
+  await expect(page.locator('.account-auth-live-notice[role="alert"]')).toContainText(
+    "Fitness connection unavailable",
+  );
+  await expect(page.locator("html")).not.toHaveAttribute("data-post-auth-destination", /.+/);
+});
+
 test("signup validation stops before the provider call", async ({ browserName, page }) => {
   test.slow(browserName === "webkit", "Mobile WebKit needs a longer native actionability budget.");
   await page.goto("/login?auth_test=signup-existing");
@@ -1500,16 +1534,46 @@ test("recovery exchanges PKCE before exposing the password form", async ({ brows
   await expect(page.getByLabel("New password", { exact: true })).toBeVisible();
 });
 
-test("confirmation is one-time, sanitized, and preserves only an approved return", async ({ page }) => {
-  await page.goto(
-    "/auth/confirm?auth_test=success&token_hash=private-hash&type=signup&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F",
+test("confirmation is browser-bound, one-time, and works from a new tab", async ({ context, page }) => {
+  await page.goto("/");
+  await page.evaluate((key) => window.localStorage.setItem(key, "fitness-confirm-state"), accountContract.confirmationStateKey);
+  const confirmationPage = await context.newPage();
+  await confirmationPage.goto(
+    "/auth/confirm?app=fitness&auth_test=success&token_hash=private-hash&type=signup&state=fitness-confirm-state&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F",
   );
-  await expect(page.getByRole("status")).toContainText("Confirmation complete.");
-  await expect(page).toHaveURL(/\/auth\/confirm$/);
-  await expect(page.getByRole("link", { name: "Continue safely" })).toHaveAttribute(
+  await expect(confirmationPage.getByRole("status")).toContainText("Confirmation complete.");
+  await expect(confirmationPage).toHaveURL(/\/auth\/confirm$/);
+  await expect(confirmationPage.getByRole("link", { name: "Continue safely" })).toHaveAttribute(
     "href",
     "https://fitness.fawxzzy.com/",
   );
+  await expect.poll(() => confirmationPage.evaluate((key) => window.localStorage.getItem(key), accountContract.confirmationStateKey)).toBeNull();
+});
+
+test("Fitness confirmation fails closed when its secure session handoff cannot complete", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate((key) => window.localStorage.setItem(key, "fitness-confirm-state"), accountContract.confirmationStateKey);
+  await page.goto(
+    "/auth/confirm?app=fitness&auth_test=fitness-handoff-error&token_hash=private-hash&type=signup&state=fitness-confirm-state&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F",
+  );
+  await expect(page.locator('[data-auth-state="recoverable-error"] [role="alert"]')).toContainText(
+    "Fitness connection unavailable",
+  );
+  await expect(page.getByRole("link", { name: "Continue safely" })).toHaveCount(0);
+  await expect(page).toHaveURL(/\/auth\/confirm$/);
+});
+
+test("Fitness confirmation binding follows its destination despite presentation query drift", async ({ page }) => {
+  for (const appQuery of ["", "&app=website", "&app=unknown", "&app=website&app=fitness"]) {
+    await page.goto(
+      `/auth/confirm?auth_test=success&token_hash=private-hash&type=signup&state=forwarded-state&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F${appQuery}`,
+    );
+    await expect(page.locator('[data-auth-state="unauthorized"] [role="alert"]')).toContainText(
+      "does not match the browser that started it",
+    );
+    await expect(page.getByRole("link", { name: "Continue safely" })).toHaveCount(0);
+    await expect(page).toHaveURL(/\/auth\/confirm$/);
+  }
 });
 
 test("confirmation fallback actions preserve the selected product context", async ({ page }) => {
@@ -1543,6 +1607,33 @@ test("callback validates state, exchanges once, and never retains token material
   await expect(page.locator('[data-auth-state="invalid"] [role="alert"]')).toContainText(
     "missing a valid authorization handoff",
   );
+  await expect(page).toHaveURL(/\/auth\/callback$/);
+});
+
+test("Fitness callbacks establish the secure consumer session before returning", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate((key) => window.sessionStorage.setItem(key, "fitness-state"), accountContract.callbackStateKey);
+  await page.goto(
+    "/auth/callback?app=fitness&auth_test=success&code=fitness-code&state=fitness-state&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2Ftoday",
+  );
+  await expect(page.getByRole("status")).toContainText("Sign-in handoff complete.");
+  await expect(page.getByRole("link", { name: "Continue safely" })).toHaveAttribute(
+    "href",
+    "https://fitness.fawxzzy.com/today",
+  );
+});
+
+test("Fitness callbacks do not redirect when the secure consumer session fails", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate((key) => window.sessionStorage.setItem(key, "fitness-state"), accountContract.callbackStateKey);
+  await page.goto(
+    "/auth/callback?app=fitness&auth_test=fitness-handoff-error&code=fitness-code&state=fitness-state&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2Ftoday",
+  );
+  await expect(page.locator('[data-auth-state="recoverable-error"] [role="alert"]')).toContainText(
+    "Fitness connection unavailable",
+  );
+  await expect(page).toHaveURL(/\/auth\/callback$/);
+  await page.waitForTimeout(1_500);
   await expect(page).toHaveURL(/\/auth\/callback$/);
 });
 

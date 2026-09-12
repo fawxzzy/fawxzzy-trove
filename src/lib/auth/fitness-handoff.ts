@@ -1,6 +1,40 @@
-import { accountContract } from "@/config/account";
+import { accountContract, accountExperienceContexts } from "@/config/account";
 
-export const FITNESS_HANDOFF_RUNTIME_READY = false;
+export type FitnessHandoffActivation = Readonly<{
+  fitnessConsumerMerge: string;
+  state: "active" | "inactive";
+}>;
+
+export const FITNESS_HANDOFF_READINESS_CONTRACT_VERSION =
+  "fitness.auth-handoff-readiness.v1";
+export const FITNESS_HANDOFF_MASTER_PROJECT_REF = "bxtcuhkotumitoqtrcej";
+
+export const FITNESS_HANDOFF_ACTIVATION = Object.freeze({
+  fitnessConsumerMerge: "6727af070e0c1152d763901422b8a7d49df9b917",
+  state: "active",
+} as const satisfies FitnessHandoffActivation);
+
+/**
+ * The portal may attempt the first, credential-free handshake only from its
+ * canonical origin. Fitness must still independently attest the deployed
+ * source, master Auth audience, and handoff store before credentials are read.
+ */
+export function fitnessHandoffRuntimeReady(
+  runtimeOrigin: string,
+  activation: FitnessHandoffActivation = FITNESS_HANDOFF_ACTIVATION,
+): boolean {
+  try {
+    const candidate = new URL(runtimeOrigin);
+    return candidate.origin === accountContract.canonicalOrigin
+      && !candidate.username && !candidate.password
+      && accountExperienceContexts.fitness.consumerIntegration === "active"
+      && activation.state === "active"
+      && /^[0-9a-f]{40}$/.test(activation.fitnessConsumerMerge);
+  } catch {
+    return false;
+  }
+}
+
 export const FITNESS_HANDOFF_UNAVAILABLE =
   "Account signed in. Fitness connection unavailable.";
 
@@ -31,6 +65,12 @@ export function fitnessReturnPath(candidate: string): string {
 }
 
 type SessionPair = { accessToken: string; refreshToken: string };
+type FitnessRuntimeReadiness = {
+  authProjectRef: string;
+  contractVersion: string;
+  handoffStore: string;
+  sourceCommit: string;
+};
 type Dependencies = {
   enabled: boolean;
   isAttemptCurrent?: () => boolean | Promise<boolean>;
@@ -49,6 +89,17 @@ function validSessionPair(value: unknown): value is SessionPair {
     typeof value.accessToken === "string" && typeof value.refreshToken === "string" &&
     Boolean(value.accessToken.trim()) && Boolean(value.refreshToken.trim()) &&
     value.accessToken.length <= maxTokenLength && value.refreshToken.length <= maxTokenLength;
+}
+
+function validRuntimeReadiness(
+  value: unknown,
+  activation: FitnessHandoffActivation = FITNESS_HANDOFF_ACTIVATION,
+): value is FitnessRuntimeReadiness {
+  return exactObject(value, ["authProjectRef", "contractVersion", "handoffStore", "sourceCommit"])
+    && value.authProjectRef === FITNESS_HANDOFF_MASTER_PROJECT_REF
+    && value.contractVersion === FITNESS_HANDOFF_READINESS_CONTRACT_VERSION
+    && value.handoffStore === "available"
+    && value.sourceCommit === activation.fitnessConsumerMerge;
 }
 
 async function bounded<T>(operation: (signal: AbortSignal) => Promise<T>): Promise<T> {
@@ -115,9 +166,11 @@ export async function completeFitnessHandoff(candidate: string, dependencies: De
     };
     const returnTo = fitnessReturnPath(candidate);
     const started = await post("/auth/session-handoff", { returnTo });
-    if (!exactObject(started, ["ok", "handoffId", "returnTo"]) || started.ok !== true ||
+    if (!exactObject(started, ["ok", "handoffId", "readiness", "returnTo"]) || started.ok !== true ||
       typeof started.handoffId !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(started.handoffId) ||
-      started.returnTo !== returnTo) throw new FitnessHandoffError();
+      !validRuntimeReadiness(started.readiness) || started.returnTo !== returnTo) {
+      throw new FitnessHandoffError();
+    }
     await assertCurrent();
 
     // Tokens stay inside this invocation; they never enter PortalSession or React state.
