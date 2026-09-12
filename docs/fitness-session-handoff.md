@@ -1,8 +1,9 @@
 # Fitness session handoff v1 (source preparation)
 
-Status: disabled in deployed-runtime code. No database, provider, credential,
-or production changes are made by this source candidate. Fitness owns the
-consumer and durable challenge store. Socials owns the portal producer.
+Status: active in source and pending the paired verified production release.
+No database, provider, credential, or production changes are made by this
+source candidate. Fitness owns the consumer and durable challenge store.
+Socials owns the portal producer.
 
 ## Wire contract
 
@@ -17,7 +18,11 @@ consumer and durable challenge store. Socials owns the portal producer.
    Store the binding hash, ID, exact portal origin, `fitness` audience, issuer
    `https://bxtcuhkotumitoqtrcej.supabase.co/auth/v1`, expiry and normalized path.
    Set `__Host-fitness-handoff`: HttpOnly, Secure, SameSite=Lax, Path=/,
-   Max-Age=60, no Domain. Return exactly `{ok:true,handoffId,returnTo}`.
+   Max-Age=60, no Domain. Return exactly
+   `{ok:true,handoffId,readiness:{authProjectRef,contractVersion,handoffStore,sourceCommit},returnTo}`.
+   The readiness values must identify master project `bxtcuhkotumitoqtrcej`,
+   contract `fitness.auth-handoff-readiness.v1`, store state `available`, and
+   the exact reviewed Fitness merge approved by the portal source.
 4. Portal retrieves the current session from its existing Supabase client,
    checks the expected user has not changed, then POSTs
    `{handoffId,accessToken,refreshToken}` to Fitness `/auth/session-sync`.
