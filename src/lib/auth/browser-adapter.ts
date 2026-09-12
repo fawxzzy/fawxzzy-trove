@@ -10,6 +10,10 @@ import {
   isLocalAuthTestOrigin,
 } from "@/config/account";
 import { isBrowserSafeSupabasePublicKey } from "@/lib/auth/supabase-public-key.mjs";
+import {
+  completeFitnessHandoff, fitnessReturnPath, FitnessHandoffError,
+  FITNESS_HANDOFF_RUNTIME_READY,
+} from "@/lib/auth/fitness-handoff";
 
 export type PortalSession = {
   displayName: string | null;
@@ -22,6 +26,7 @@ export type PortalAuthAdapter = {
   getSession(): Promise<PortalSession | null>;
   onSessionChange(listener: (session: PortalSession | null) => void): () => void;
   signIn(email: string, password: string): Promise<PortalSession | null>;
+  handoffToFitness(returnTarget: string, expectedUserId: string): Promise<string>;
   signUp(
     email: string,
     password: string,
@@ -134,6 +139,18 @@ function createSupabaseAdapter(url: string, publishableKey: string): PortalAuthA
       if (error) throw error;
       return toPortalSession(data.session);
     },
+    async handoffToFitness(returnTarget, expectedUserId) {
+      return completeFitnessHandoff(returnTarget, {
+        enabled: FITNESS_HANDOFF_RUNTIME_READY,
+        async readSession() {
+          const { data, error } = await client.auth.getSession();
+          if (error || !data.session || data.session.user.id !== expectedUserId) {
+            throw new FitnessHandoffError();
+          }
+          return { accessToken: data.session.access_token, refreshToken: data.session.refresh_token };
+        },
+      });
+    },
     async signOut() {
       const { error } = await client.auth.signOut({ scope: "local" });
       if (error) throw error;
@@ -222,6 +239,13 @@ function createTestAdapter(scenario: string): PortalAuthAdapter {
       publish();
       return session;
     },
+    async handoffToFitness(returnTarget, expectedUserId) {
+      // Deterministic local-only adapter: never send synthetic credentials to a live service.
+      if (scenario === "fitness-handoff-error" || session?.userId !== expectedUserId) {
+        throw new FitnessHandoffError();
+      }
+      return `${accountContract.productOrigins.fitness}${fitnessReturnPath(returnTarget)}`;
+    },
     async signOut() {
       fail();
       session = null;
@@ -302,6 +326,7 @@ export function resolvePortalAuthAdapter(
       "signup-rate-limit",
       "signup-network",
       "signup-unknown",
+      "fitness-handoff-error",
     ].includes(scenario) &&
     isLocalAuthTestOrigin(location.origin)
   ) {

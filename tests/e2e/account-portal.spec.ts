@@ -1183,7 +1183,7 @@ test("contextual login records only a closed product continuation", async ({ pag
   await page.getByLabel("Password", { exact: true }).fill("short");
   await page.locator(".account-auth-dock").getByRole("button", { name: "Sign in" }).click();
   await expect.poll(() => page.locator("html").getAttribute("data-post-auth-destination"))
-    .toBe("https://fitness.fawxzzy.com/session/abc?returnTo=%2Ftoday");
+    .toBe("https://fitness.fawxzzy.com/entry");
 });
 
 for (const [name, returnTo] of [
