@@ -26,16 +26,37 @@ consumer and durable challenge store. Socials owns the portal producer.
    the SDK-returned current pair unchanged. Do not copy it into UI state, log
    it, or put credentials in any URL.
 5. Fitness validates exact origin and binding, atomically consumes the challenge
-   once, validates the session pair against master, then writes its HttpOnly
-   session cookies and returns exactly `{ok:true,returnTo}` from the stored path.
-   The portal redirects only after validating this success response.
+   once, validates and rotates the session pair against master, then writes its
+   HttpOnly session cookies and returns exactly
+   `{ok:true,returnTo,session:{accessToken,refreshToken}}` from the stored path.
+   Fitness is the only rotation authority for this handoff. The portal validates
+   the exact response and token bounds, confirms the returned access token still
+   names the expected user, and persists that exact returned pair through its
+   existing Supabase browser client. It must not call `refreshSession` or create
+   another child pair before redirect, because both products must retain the
+   same final refresh lineage.
+
+Each portal handoff is bound to the current local Auth mutation epoch. Sign-out
+or a newer login invalidates the attempt. The portal checks the epoch and
+expected user before accepting the consume result, again immediately before
+local persistence, and again before navigation. The browser Auth storage adapter
+also fences the exact returned access-token write, so an epoch change during the
+SDK's internal user lookup rejects before storage or subscriber notification.
+That last epoch comparison and browser-storage write are one synchronous step.
+If durable browser storage is unavailable, ordinary Auth retains its in-memory
+fallback while the cross-app handoff fails closed instead of redirecting with a
+session that cannot survive navigation.
+Local persistence is awaited to completion rather than raced against a timer,
+so a rejected timeout cannot continue later and overwrite a newer session.
 
 Both POSTs use explicit JSON, credentialed CORS, no-store, no referrer, error on
 redirect, a 10s request deadline and zero automatic retries. Invalid response
 shapes, expired/replayed/mismatched challenges, invalid sessions, timeouts and
-non-2xx responses fail closed without a redirect. Users keep the account-origin
-session and receive a safe connection error. A manual new attempt requires a
-new challenge, never replay. Missing/blocked cookies must fail consume.
+non-2xx responses, malformed or cross-user returned pairs, and verification or
+local persistence failures fail
+closed without a redirect. Users receive a safe connection error without token
+details. A manual new attempt requires a new challenge, never replay.
+Missing/blocked cookies must fail consume.
 
 Both sides cap each token at 4,096 characters and the complete serialized JSON
 request at 8,192 UTF-8 bytes, including field names and the challenge ID. The
@@ -78,7 +99,8 @@ before any test sends the fixed synthetic session pair. No production request
 override or activation is added to the application.
 
 The integration tests cover begin-before-session retrieval, binding-cookie
-transfer, consume-before-navigation, missing binding, and replay after success.
+transfer, returned-session persistence before navigation, missing binding, and
+replay after success.
 They are skipped when the fixture is absent; skipped tests are not acceptance.
 Fitness's actual store tests must separately prove concurrent consume and
 process-restart persistence. The fixture attestation alone is not proof of

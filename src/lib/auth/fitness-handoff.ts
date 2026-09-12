@@ -16,6 +16,7 @@ const origin = accountContract.productOrigins.fitness;
 const timeoutMs = 10_000;
 const maxTokenLength = 4 * 1024;
 const maxRequestBodyBytes = 8 * 1024;
+const maxResponseBodyBytes = 16 * 1024;
 
 export function fitnessReturnPath(candidate: string): string {
   try {
@@ -32,6 +33,8 @@ export function fitnessReturnPath(candidate: string): string {
 type SessionPair = { accessToken: string; refreshToken: string };
 type Dependencies = {
   enabled: boolean;
+  isAttemptCurrent?: () => boolean | Promise<boolean>;
+  persistSession: (session: SessionPair) => Promise<void>;
   readSession: () => Promise<SessionPair | null>;
   request?: typeof fetch;
 };
@@ -39,6 +42,13 @@ type Dependencies = {
 function exactObject(value: unknown, keys: string[]): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value) &&
     Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key)));
+}
+
+function validSessionPair(value: unknown): value is SessionPair {
+  return exactObject(value, ["accessToken", "refreshToken"]) &&
+    typeof value.accessToken === "string" && typeof value.refreshToken === "string" &&
+    Boolean(value.accessToken.trim()) && Boolean(value.refreshToken.trim()) &&
+    value.accessToken.length <= maxTokenLength && value.refreshToken.length <= maxTokenLength;
 }
 
 async function bounded<T>(operation: (signal: AbortSignal) => Promise<T>): Promise<T> {
@@ -84,7 +94,7 @@ export async function completeFitnessHandoff(candidate: string, dependencies: De
         const { value, done } = await reader.read();
         if (done) break;
         length += value.byteLength;
-        if (length > 2048) throw new FitnessHandoffError();
+        if (length > maxResponseBodyBytes) throw new FitnessHandoffError();
         chunks.push(value);
       }
     } finally {
@@ -98,22 +108,34 @@ export async function completeFitnessHandoff(candidate: string, dependencies: De
   });
 
   try {
+    const assertCurrent = async () => {
+      if (dependencies.isAttemptCurrent && !await dependencies.isAttemptCurrent()) {
+        throw new FitnessHandoffError();
+      }
+    };
     const returnTo = fitnessReturnPath(candidate);
     const started = await post("/auth/session-handoff", { returnTo });
     if (!exactObject(started, ["ok", "handoffId", "returnTo"]) || started.ok !== true ||
       typeof started.handoffId !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(started.handoffId) ||
       started.returnTo !== returnTo) throw new FitnessHandoffError();
+    await assertCurrent();
 
     // Tokens stay inside this invocation; they never enter PortalSession or React state.
     const pair = await bounded(() => dependencies.readSession());
-    if (!pair || typeof pair.accessToken !== "string" || typeof pair.refreshToken !== "string" ||
-      !pair.accessToken.trim() || !pair.refreshToken.trim() ||
-      pair.accessToken.length > maxTokenLength || pair.refreshToken.length > maxTokenLength) throw new FitnessHandoffError();
+    if (!validSessionPair(pair)) throw new FitnessHandoffError();
+    await assertCurrent();
     const finished = await post("/auth/session-sync", {
       handoffId: started.handoffId, accessToken: pair.accessToken, refreshToken: pair.refreshToken,
     });
-    if (!exactObject(finished, ["ok", "returnTo"]) || finished.ok !== true ||
-      finished.returnTo !== returnTo) throw new FitnessHandoffError();
+    if (!exactObject(finished, ["ok", "returnTo", "session"])) throw new FitnessHandoffError();
+    const rotatedSession = finished.session;
+    if (finished.ok !== true || finished.returnTo !== returnTo ||
+      !validSessionPair(rotatedSession)) throw new FitnessHandoffError();
+    await assertCurrent();
+    // Local persistence is awaited to completion rather than deadline-raced. A timed-out
+    // promise must never continue later and overwrite a sign-out or newer login.
+    await dependencies.persistSession(rotatedSession);
+    await assertCurrent();
     return `${origin}${returnTo}`;
   } catch {
     throw new FitnessHandoffError();
