@@ -50,13 +50,77 @@ type PublicAuthConfig = {
   url: string;
 };
 
+type BrowserAuthStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
+export function resolveBrowserAuthStorage(
+  readStorage: () => BrowserAuthStorage = () => window.localStorage,
+): { durable: boolean; storage: BrowserAuthStorage } {
+  const memory = new Map<string, string>();
+  const memoryStorage: BrowserAuthStorage = {
+    getItem: (key) => memory.get(key) ?? null,
+    removeItem: (key) => { memory.delete(key); },
+    setItem: (key, value) => { memory.set(key, value); },
+  };
+  try {
+    const storage = readStorage();
+    const probeKey = `${accountContract.storageKey}.availability.${Math.random()}`;
+    storage.setItem(probeKey, probeKey);
+    storage.removeItem(probeKey);
+    return { durable: true, storage };
+  } catch {
+    // Match the Supabase client's browser-storage fallback for ordinary Auth.
+    return { durable: false, storage: memoryStorage };
+  }
+}
+
+export function createFitnessCommitFencedStorage(
+  storage: BrowserAuthStorage,
+  durable = true,
+) {
+  let fence: { accessToken: string; isCurrent: () => boolean } | null = null;
+  const fencedStorage = {
+    getItem: (key: string) => storage.getItem(key),
+    removeItem: (key: string) => storage.removeItem(key),
+    setItem(key: string, value: string) {
+      if (fence) {
+        let storedAccessToken: unknown;
+        try {
+          storedAccessToken = (JSON.parse(value) as { access_token?: unknown }).access_token;
+        } catch { /* Non-session SDK values are not Fitness commit candidates. */ }
+        // This final epoch comparison and the browser write are deliberately
+        // synchronous: no microtask can invalidate the attempt between them.
+        if (storedAccessToken === fence.accessToken && !fence.isCurrent()) {
+          throw new FitnessHandoffError();
+        }
+      }
+      storage.setItem(key, value);
+    },
+  };
+  return {
+    storage: fencedStorage,
+    async run<T>(
+      accessToken: string,
+      isCurrent: () => boolean,
+      operation: () => Promise<T>,
+    ): Promise<T> {
+      if (!durable || fence) throw new FitnessHandoffError();
+      fence = { accessToken, isCurrent };
+      try {
+        return await operation();
+      } finally {
+        fence = null;
+      }
+    },
+  };
+}
+
 type FitnessSessionAuth = {
   getUser(accessToken: string): Promise<{
     data: { user: { id: string } | null };
     error: unknown;
   }>;
   setSession(session: { access_token: string; refresh_token: string }): Promise<{
-    data: { session: Session | null };
+    data: { session: { user: { id: string } } | null };
     error: unknown;
   }>;
 };
@@ -65,9 +129,13 @@ export async function persistVerifiedFitnessSession(
   auth: FitnessSessionAuth,
   session: { accessToken: string; refreshToken: string },
   expectedUserId: string,
+  canCommit: () => boolean | Promise<boolean> = () => true,
 ): Promise<void> {
-  const verified = await auth.getUser(session.accessToken);
-  if (verified.error || verified.data.user?.id !== expectedUserId) {
+  const accessVerified = await auth.getUser(session.accessToken);
+  if (accessVerified.error || accessVerified.data.user?.id !== expectedUserId) {
+    throw new FitnessHandoffError();
+  }
+  if (!await canCommit()) {
     throw new FitnessHandoffError();
   }
   const persisted = await auth.setSession({
@@ -101,12 +169,19 @@ function createSupabaseAdapter(url: string, publishableKey: string): PortalAuthA
     throw new Error("Shared account services are not connected on this deployment yet.");
   }
 
+  let authMutationEpoch = 0;
+  const browserStorage = resolveBrowserAuthStorage();
+  const fitnessCommitFence = createFitnessCommitFencedStorage(
+    browserStorage.storage,
+    browserStorage.durable,
+  );
   const client = createClient(url, publishableKey, {
     auth: {
       autoRefreshToken: true,
       detectSessionInUrl: false,
       flowType: "pkce",
       persistSession: true,
+      storage: fitnessCommitFence.storage,
       storageKey: accountContract.storageKey,
     },
   });
@@ -125,6 +200,7 @@ function createSupabaseAdapter(url: string, publishableKey: string): PortalAuthA
       return () => data.subscription.unsubscribe();
     },
     async signIn(identifier, password) {
+      authMutationEpoch += 1;
       if (identifier.includes("@")) {
         const { data, error } = await client.auth.signInWithPassword({ email: identifier, password });
         if (error) throw error;
@@ -158,6 +234,7 @@ function createSupabaseAdapter(url: string, publishableKey: string): PortalAuthA
       return toPortalSession(data.session);
     },
     async signUp(email, password, username, contextId) {
+      authMutationEpoch += 1;
       const { data, error } = await client.auth.signUp({
         email,
         password,
@@ -170,11 +247,21 @@ function createSupabaseAdapter(url: string, publishableKey: string): PortalAuthA
       return toPortalSession(data.session);
     },
     async handoffToFitness(returnTarget, expectedUserId) {
+      const attemptEpoch = authMutationEpoch;
+      const isEpochCurrent = () => authMutationEpoch === attemptEpoch;
+      const isAttemptCurrent = async () => {
+        if (!isEpochCurrent()) return false;
+        const { data, error } = await client.auth.getSession();
+        return !error && data.session?.user.id === expectedUserId &&
+          isEpochCurrent();
+      };
       return completeFitnessHandoff(returnTarget, {
         enabled: FITNESS_HANDOFF_RUNTIME_READY,
         async persistSession(session) {
-          await persistVerifiedFitnessSession(client.auth, session, expectedUserId);
+          await fitnessCommitFence.run(session.accessToken, isEpochCurrent, () =>
+            persistVerifiedFitnessSession(client.auth, session, expectedUserId, isAttemptCurrent));
         },
+        isAttemptCurrent,
         async readSession() {
           const { data, error } = await client.auth.getSession();
           if (error || !data.session || data.session.user.id !== expectedUserId) {
@@ -185,6 +272,7 @@ function createSupabaseAdapter(url: string, publishableKey: string): PortalAuthA
       });
     },
     async signOut() {
+      authMutationEpoch += 1;
       const { error } = await client.auth.signOut({ scope: "local" });
       if (error) throw error;
     },
@@ -203,11 +291,13 @@ function createSupabaseAdapter(url: string, publishableKey: string): PortalAuthA
       if (error) throw error;
     },
     async confirm(tokenHash, type) {
+      authMutationEpoch += 1;
       const { data, error } = await client.auth.verifyOtp({ token_hash: tokenHash, type });
       if (error) throw error;
       return toPortalSession(data.session);
     },
     async exchangeCode(code) {
+      authMutationEpoch += 1;
       const { data, error } = await client.auth.exchangeCodeForSession(code);
       if (error) throw error;
       return toPortalSession(data.session);

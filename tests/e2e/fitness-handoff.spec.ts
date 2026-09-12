@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import {
+  createFitnessCommitFencedStorage,
   persistVerifiedFitnessSession,
+  resolveBrowserAuthStorage,
   resolvePortalAuthAdapter,
 } from "../../src/lib/auth/browser-adapter";
 import {
@@ -137,7 +139,7 @@ test("rotated session persistence must succeed before navigation", async () => {
   expect(f.calls).toHaveLength(2);
 });
 
-test("a rotated session for another user is rejected before storage or subscriber mutation", async () => {
+test("a rotated access session for another user is rejected before storage or subscriber mutation", async () => {
   let storageWrites = 0;
   let subscriberEvents = 0;
   const auth = {
@@ -154,6 +156,134 @@ test("a rotated session for another user is rejected before storage or subscribe
     .rejects.toThrow(FITNESS_HANDOFF_UNAVAILABLE);
   expect(storageWrites).toBe(0);
   expect(subscriberEvents).toBe(0);
+});
+
+test("the portal persists the exact Fitness-rotated pair without creating another refresh lineage", async () => {
+  let persisted: { access_token: string; refresh_token: string } | null = null;
+  const auth = {
+    async getUser() {
+      return { data: { user: { id: "expected-user" } }, error: null };
+    },
+    async setSession(session: { access_token: string; refresh_token: string }) {
+      persisted = session;
+      return { data: { session: { user: { id: "expected-user" } } }, error: null };
+    },
+  };
+  await expect(persistVerifiedFitnessSession(auth, rotatedPair, "expected-user"))
+    .resolves.toBeUndefined();
+  expect(persisted).toEqual({
+    access_token: rotatedPair.accessToken,
+    refresh_token: rotatedPair.refreshToken,
+  });
+});
+
+test("an invalidated handoff cannot commit a delayed Fitness response or navigate", async () => {
+  let current = true;
+  let consumeStarted = false;
+  let releaseConsume!: (response: Response) => void;
+  let writes = 0;
+  const delayedConsume = new Promise<Response>((resolve) => { releaseConsume = resolve; });
+  const f = fixture([json(begin)]);
+  const request = (async (url: string | URL | Request, init?: RequestInit) => {
+    if (String(url).endsWith("/auth/session-sync")) {
+      consumeStarted = true;
+      return delayedConsume;
+    }
+    return f.request(url, init);
+  }) as typeof fetch;
+  const completion = completeFitnessHandoff("/today", {
+    enabled: true,
+    isAttemptCurrent: async () => current,
+    persistSession: async () => { writes += 1; },
+    readSession: async () => pair,
+    request,
+  });
+  await expect.poll(() => consumeStarted).toBe(true);
+  current = false;
+  releaseConsume(json(end));
+  await expect(completion).rejects.toThrow(FITNESS_HANDOFF_UNAVAILABLE);
+  expect(writes).toBe(0);
+});
+
+test("local persistence is completion-bound and cannot outlive a handoff timeout", async () => {
+  let releasePersist!: () => void;
+  let settled = false;
+  const persistence = new Promise<void>((resolve) => { releasePersist = resolve; });
+  const f = fixture([json(begin), json(end)]);
+  const completion = completeFitnessHandoff("/today", {
+    enabled: true,
+    persistSession: async () => persistence,
+    readSession: async () => pair,
+    request: f.request,
+  }).finally(() => { settled = true; });
+  await expect.poll(() => f.calls.length).toBe(2);
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  expect(settled).toBe(false);
+  releasePersist();
+  await expect(completion).resolves.toBe(`${origin}/today`);
+});
+
+test("an Auth epoch change fences the delayed SDK storage commit itself", async () => {
+  let current = true;
+  let releaseSdkLookup!: () => void;
+  const sdkLookup = new Promise<void>((resolve) => { releaseSdkLookup = resolve; });
+  const stored = new Map<string, string>();
+  const writes: string[] = [];
+  const fence = createFitnessCommitFencedStorage({
+    getItem: (key) => stored.get(key) ?? null,
+    removeItem: (key) => { stored.delete(key); },
+    setItem: (key, value) => { writes.push(value); stored.set(key, value); },
+  });
+  const auth = {
+    async getUser() {
+      return { data: { user: { id: "expected-user" } }, error: null };
+    },
+    async setSession(session: { access_token: string; refresh_token: string }) {
+      await sdkLookup;
+      await fence.storage.setItem("session", JSON.stringify(session));
+      return { data: { session: { user: { id: "expected-user" } } }, error: null };
+    },
+  };
+  const persistence = fence.run(rotatedPair.accessToken, () => current, () =>
+    persistVerifiedFitnessSession(auth, rotatedPair, "expected-user", () => current));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  current = false;
+  releaseSdkLookup();
+  await expect(persistence).rejects.toThrow(FITNESS_HANDOFF_UNAVAILABLE);
+  expect(writes).toEqual([]);
+  expect(stored.size).toBe(0);
+});
+
+test("the storage fence performs its final epoch comparison synchronously", async () => {
+  let current = true;
+  let writes = 0;
+  const fence = createFitnessCommitFencedStorage({
+    getItem: () => null,
+    removeItem: () => undefined,
+    setItem: () => { writes += 1; },
+  });
+  const operation = fence.run(rotatedPair.accessToken, () => current, async () => {
+    current = false;
+    fence.storage.setItem("session", JSON.stringify({ access_token: rotatedPair.accessToken }));
+  });
+  await expect(operation).rejects.toThrow(FITNESS_HANDOFF_UNAVAILABLE);
+  expect(writes).toBe(0);
+});
+
+test("denied browser storage preserves ordinary Auth fallback and disables handoff persistence", async () => {
+  const resolved = resolveBrowserAuthStorage(() => {
+    throw new DOMException("Access denied", "SecurityError");
+  });
+  expect(resolved.durable).toBe(false);
+  resolved.storage.setItem("ordinary-auth", "memory-session");
+  expect(resolved.storage.getItem("ordinary-auth")).toBe("memory-session");
+
+  let operationCalled = false;
+  const fence = createFitnessCommitFencedStorage(resolved.storage, resolved.durable);
+  await expect(fence.run(rotatedPair.accessToken, () => true, async () => {
+    operationCalled = true;
+  })).rejects.toThrow(FITNESS_HANDOFF_UNAVAILABLE);
+  expect(operationCalled).toBe(false);
 });
 
 test("failed or missing current session never sends consume", async () => {

@@ -29,15 +29,31 @@ consumer and durable challenge store. Socials owns the portal producer.
    once, validates and rotates the session pair against master, then writes its
    HttpOnly session cookies and returns exactly
    `{ok:true,returnTo,session:{accessToken,refreshToken}}` from the stored path.
-   The portal validates the exact response and token bounds, persists that
-   returned replacement pair through its existing Supabase browser client, and
-   redirects only after persistence succeeds. It must not keep using the
-   submitted parent refresh token after Fitness rotates it.
+   Fitness is the only rotation authority for this handoff. The portal validates
+   the exact response and token bounds, confirms the returned access token still
+   names the expected user, and persists that exact returned pair through its
+   existing Supabase browser client. It must not call `refreshSession` or create
+   another child pair before redirect, because both products must retain the
+   same final refresh lineage.
+
+Each portal handoff is bound to the current local Auth mutation epoch. Sign-out
+or a newer login invalidates the attempt. The portal checks the epoch and
+expected user before accepting the consume result, again immediately before
+local persistence, and again before navigation. The browser Auth storage adapter
+also fences the exact returned access-token write, so an epoch change during the
+SDK's internal user lookup rejects before storage or subscriber notification.
+That last epoch comparison and browser-storage write are one synchronous step.
+If durable browser storage is unavailable, ordinary Auth retains its in-memory
+fallback while the cross-app handoff fails closed instead of redirecting with a
+session that cannot survive navigation.
+Local persistence is awaited to completion rather than raced against a timer,
+so a rejected timeout cannot continue later and overwrite a newer session.
 
 Both POSTs use explicit JSON, credentialed CORS, no-store, no referrer, error on
 redirect, a 10s request deadline and zero automatic retries. Invalid response
 shapes, expired/replayed/mismatched challenges, invalid sessions, timeouts and
-non-2xx responses, malformed returned pairs, and local persistence failures fail
+non-2xx responses, malformed or cross-user returned pairs, and verification or
+local persistence failures fail
 closed without a redirect. Users receive a safe connection error without token
 details. A manual new attempt requires a new challenge, never replay.
 Missing/blocked cookies must fail consume.

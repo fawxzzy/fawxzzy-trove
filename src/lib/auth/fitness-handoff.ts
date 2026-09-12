@@ -33,6 +33,7 @@ export function fitnessReturnPath(candidate: string): string {
 type SessionPair = { accessToken: string; refreshToken: string };
 type Dependencies = {
   enabled: boolean;
+  isAttemptCurrent?: () => boolean | Promise<boolean>;
   persistSession: (session: SessionPair) => Promise<void>;
   readSession: () => Promise<SessionPair | null>;
   request?: typeof fetch;
@@ -107,15 +108,22 @@ export async function completeFitnessHandoff(candidate: string, dependencies: De
   });
 
   try {
+    const assertCurrent = async () => {
+      if (dependencies.isAttemptCurrent && !await dependencies.isAttemptCurrent()) {
+        throw new FitnessHandoffError();
+      }
+    };
     const returnTo = fitnessReturnPath(candidate);
     const started = await post("/auth/session-handoff", { returnTo });
     if (!exactObject(started, ["ok", "handoffId", "returnTo"]) || started.ok !== true ||
       typeof started.handoffId !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(started.handoffId) ||
       started.returnTo !== returnTo) throw new FitnessHandoffError();
+    await assertCurrent();
 
     // Tokens stay inside this invocation; they never enter PortalSession or React state.
     const pair = await bounded(() => dependencies.readSession());
     if (!validSessionPair(pair)) throw new FitnessHandoffError();
+    await assertCurrent();
     const finished = await post("/auth/session-sync", {
       handoffId: started.handoffId, accessToken: pair.accessToken, refreshToken: pair.refreshToken,
     });
@@ -123,7 +131,11 @@ export async function completeFitnessHandoff(candidate: string, dependencies: De
     const rotatedSession = finished.session;
     if (finished.ok !== true || finished.returnTo !== returnTo ||
       !validSessionPair(rotatedSession)) throw new FitnessHandoffError();
-    await bounded(() => dependencies.persistSession(rotatedSession));
+    await assertCurrent();
+    // Local persistence is awaited to completion rather than deadline-raced. A timed-out
+    // promise must never continue later and overwrite a sign-out or newer login.
+    await dependencies.persistSession(rotatedSession);
+    await assertCurrent();
     return `${origin}${returnTo}`;
   } catch {
     throw new FitnessHandoffError();
