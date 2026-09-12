@@ -1534,19 +1534,20 @@ test("recovery exchanges PKCE before exposing the password form", async ({ brows
   await expect(page.getByLabel("New password", { exact: true })).toBeVisible();
 });
 
-test("confirmation is one-time, sanitized, and preserves only an approved return", async ({ page }) => {
+test("confirmation is browser-bound, one-time, and works from a new tab", async ({ context, page }) => {
   await page.goto("/");
   await page.evaluate((key) => window.localStorage.setItem(key, "fitness-confirm-state"), accountContract.confirmationStateKey);
-  await page.goto(
+  const confirmationPage = await context.newPage();
+  await confirmationPage.goto(
     "/auth/confirm?app=fitness&auth_test=success&token_hash=private-hash&type=signup&state=fitness-confirm-state&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F",
   );
-  await expect(page.getByRole("status")).toContainText("Confirmation complete.");
-  await expect(page).toHaveURL(/\/auth\/confirm$/);
-  await expect(page.getByRole("link", { name: "Continue safely" })).toHaveAttribute(
+  await expect(confirmationPage.getByRole("status")).toContainText("Confirmation complete.");
+  await expect(confirmationPage).toHaveURL(/\/auth\/confirm$/);
+  await expect(confirmationPage.getByRole("link", { name: "Continue safely" })).toHaveAttribute(
     "href",
     "https://fitness.fawxzzy.com/",
   );
-  await expect.poll(() => page.evaluate((key) => window.localStorage.getItem(key), accountContract.confirmationStateKey)).toBeNull();
+  await expect.poll(() => confirmationPage.evaluate((key) => window.localStorage.getItem(key), accountContract.confirmationStateKey)).toBeNull();
 });
 
 test("Fitness confirmation fails closed when its secure session handoff cannot complete", async ({ page }) => {
