@@ -7,14 +7,21 @@ import {
 } from "../../src/lib/auth/browser-adapter";
 import {
   completeFitnessHandoff, fitnessHandoffRuntimeReady, fitnessReturnPath,
-  FITNESS_HANDOFF_ACTIVATION, FITNESS_HANDOFF_UNAVAILABLE,
+  FITNESS_HANDOFF_ACTIVATION, FITNESS_HANDOFF_MASTER_PROJECT_REF,
+  FITNESS_HANDOFF_READINESS_CONTRACT_VERSION, FITNESS_HANDOFF_UNAVAILABLE,
 } from "../../src/lib/auth/fitness-handoff";
 
 const id = "a".repeat(43);
 const origin = "https://fitness.fawxzzy.com";
 const pair = { accessToken: "synthetic-access", refreshToken: "synthetic-refresh" };
 const rotatedPair = { accessToken: "rotated-access", refreshToken: "rotated-refresh" };
-const begin = { ok: true, handoffId: id, returnTo: "/today" };
+const readiness = {
+  authProjectRef: FITNESS_HANDOFF_MASTER_PROJECT_REF,
+  contractVersion: FITNESS_HANDOFF_READINESS_CONTRACT_VERSION,
+  handoffStore: "available",
+  sourceCommit: FITNESS_HANDOFF_ACTIVATION.fitnessConsumerMerge,
+};
+const begin = { ok: true, handoffId: id, readiness, returnTo: "/today" };
 const end = { ok: true, returnTo: "/today", session: rotatedPair };
 const persistSession = async () => undefined;
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), {
@@ -45,11 +52,7 @@ test("Fitness handoff activates only on the canonical account runtime with exact
 
   for (const activation of [
     { ...FITNESS_HANDOFF_ACTIVATION, state: "inactive" as const },
-    { ...FITNESS_HANDOFF_ACTIVATION, fitnessConsumerMerge: "0".repeat(40) },
-    { ...FITNESS_HANDOFF_ACTIVATION, fitnessConsumerReceiptSha256: "0".repeat(64) },
-    { ...FITNESS_HANDOFF_ACTIVATION, r101TerminalSha256: "0".repeat(64) },
-    { ...FITNESS_HANDOFF_ACTIVATION, w10ExecutionSha256: "0".repeat(64) },
-    { ...FITNESS_HANDOFF_ACTIVATION, w10SettlementSha256: "0".repeat(64) },
+    { ...FITNESS_HANDOFF_ACTIVATION, fitnessConsumerMerge: "invalid" },
   ]) {
     expect(fitnessHandoffRuntimeReady("https://account.fawxzzy.com", activation)).toBe(false);
   }
@@ -107,6 +110,12 @@ for (const response of [
   null, [], { ...begin, ok: false }, { ...begin, handoffId: "short" },
   { ...begin, handoffId: "/".repeat(43) }, { ...begin, returnTo: "https://evil.test" },
   { ...begin, returnTo: "/entry" }, { ...begin, accessToken: "must-not-echo" },
+  { ...begin, readiness: null },
+  { ...begin, readiness: { ...readiness, authProjectRef: "legacy-project" } },
+  { ...begin, readiness: { ...readiness, contractVersion: "legacy-contract" } },
+  { ...begin, readiness: { ...readiness, handoffStore: "unavailable" } },
+  { ...begin, readiness: { ...readiness, sourceCommit: "0".repeat(40) } },
+  { ...begin, readiness: { ...readiness, extra: "must-not-accept" } },
 ]) {
   test(`malformed begin is terminal ${JSON.stringify(response)}`, async () => {
     const f = fixture([json(response)]);
