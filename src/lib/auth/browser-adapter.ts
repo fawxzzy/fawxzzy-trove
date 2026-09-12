@@ -50,6 +50,36 @@ type PublicAuthConfig = {
   url: string;
 };
 
+type FitnessSessionAuth = {
+  getUser(accessToken: string): Promise<{
+    data: { user: { id: string } | null };
+    error: unknown;
+  }>;
+  setSession(session: { access_token: string; refresh_token: string }): Promise<{
+    data: { session: Session | null };
+    error: unknown;
+  }>;
+};
+
+export async function persistVerifiedFitnessSession(
+  auth: FitnessSessionAuth,
+  session: { accessToken: string; refreshToken: string },
+  expectedUserId: string,
+): Promise<void> {
+  const verified = await auth.getUser(session.accessToken);
+  if (verified.error || verified.data.user?.id !== expectedUserId) {
+    throw new FitnessHandoffError();
+  }
+  const persisted = await auth.setSession({
+    access_token: session.accessToken,
+    refresh_token: session.refreshToken,
+  });
+  if (persisted.error || !persisted.data.session ||
+    persisted.data.session.user.id !== expectedUserId) {
+    throw new FitnessHandoffError();
+  }
+}
+
 export type PortalAuthAdapterDependencies = {
   createLiveAdapter(url: string, publishableKey: string): PortalAuthAdapter;
   readPublicConfig(): PublicAuthConfig | null;
@@ -142,6 +172,9 @@ function createSupabaseAdapter(url: string, publishableKey: string): PortalAuthA
     async handoffToFitness(returnTarget, expectedUserId) {
       return completeFitnessHandoff(returnTarget, {
         enabled: FITNESS_HANDOFF_RUNTIME_READY,
+        async persistSession(session) {
+          await persistVerifiedFitnessSession(client.auth, session, expectedUserId);
+        },
         async readSession() {
           const { data, error } = await client.auth.getSession();
           if (error || !data.session || data.session.user.id !== expectedUserId) {

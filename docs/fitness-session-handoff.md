@@ -26,16 +26,21 @@ consumer and durable challenge store. Socials owns the portal producer.
    the SDK-returned current pair unchanged. Do not copy it into UI state, log
    it, or put credentials in any URL.
 5. Fitness validates exact origin and binding, atomically consumes the challenge
-   once, validates the session pair against master, then writes its HttpOnly
-   session cookies and returns exactly `{ok:true,returnTo}` from the stored path.
-   The portal redirects only after validating this success response.
+   once, validates and rotates the session pair against master, then writes its
+   HttpOnly session cookies and returns exactly
+   `{ok:true,returnTo,session:{accessToken,refreshToken}}` from the stored path.
+   The portal validates the exact response and token bounds, persists that
+   returned replacement pair through its existing Supabase browser client, and
+   redirects only after persistence succeeds. It must not keep using the
+   submitted parent refresh token after Fitness rotates it.
 
 Both POSTs use explicit JSON, credentialed CORS, no-store, no referrer, error on
 redirect, a 10s request deadline and zero automatic retries. Invalid response
 shapes, expired/replayed/mismatched challenges, invalid sessions, timeouts and
-non-2xx responses fail closed without a redirect. Users keep the account-origin
-session and receive a safe connection error. A manual new attempt requires a
-new challenge, never replay. Missing/blocked cookies must fail consume.
+non-2xx responses, malformed returned pairs, and local persistence failures fail
+closed without a redirect. Users receive a safe connection error without token
+details. A manual new attempt requires a new challenge, never replay.
+Missing/blocked cookies must fail consume.
 
 Both sides cap each token at 4,096 characters and the complete serialized JSON
 request at 8,192 UTF-8 bytes, including field names and the challenge ID. The
@@ -78,7 +83,8 @@ before any test sends the fixed synthetic session pair. No production request
 override or activation is added to the application.
 
 The integration tests cover begin-before-session retrieval, binding-cookie
-transfer, consume-before-navigation, missing binding, and replay after success.
+transfer, returned-session persistence before navigation, missing binding, and
+replay after success.
 They are skipped when the fixture is absent; skipped tests are not acceptance.
 Fitness's actual store tests must separately prove concurrent consume and
 process-restart persistence. The fixture attestation alone is not proof of

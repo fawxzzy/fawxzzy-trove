@@ -77,10 +77,13 @@ test.describe("producer joined to the real Fitness durable-store fixture", () =>
 
   test("real begin and consume complete the producer's fixed return sequence", async () => {
     const wire = transport(base);
+    let persisted: typeof pair | null = null;
     await expect(completeFitnessHandoff("/today", {
       enabled: true, request: wire.request,
+      persistSession: async (session) => { persisted = session; },
       readSession: async () => { expect(wire.calls).toHaveLength(1); return pair; },
     })).resolves.toBe(`${fitnessOrigin}/today`);
+    expect(persisted).toEqual(pair);
     expect(wire.calls.map(({ path }) => path)).toEqual(["/auth/session-handoff", "/auth/session-sync"]);
     expect(wire.calls[1].binding).toMatch(/^__Host-fitness-handoff=[A-Za-z0-9_-]{43}$/);
     for (const name of ["sb-access-token", "sb-refresh-token"]) {
@@ -95,7 +98,8 @@ test.describe("producer joined to the real Fitness durable-store fixture", () =>
   test("missing browser binding fails without navigation or an automatic retry", async () => {
     const wire = transport(base, false);
     await expect(completeFitnessHandoff("/today", {
-      enabled: true, request: wire.request, readSession: async () => pair,
+      enabled: true, persistSession: async () => undefined,
+      request: wire.request, readSession: async () => pair,
     })).rejects.toThrow(FITNESS_HANDOFF_UNAVAILABLE);
     expect(wire.calls).toHaveLength(2);
     expect(wire.calls[1].responseCookies.some((value) => /^sb-(access|refresh)-token=/.test(value))).toBe(false);
@@ -104,7 +108,8 @@ test.describe("producer joined to the real Fitness durable-store fixture", () =>
   test("a successfully consumed challenge cannot be used again", async () => {
     const wire = transport(base);
     await completeFitnessHandoff("/entry", {
-      enabled: true, request: wire.request, readSession: async () => pair,
+      enabled: true, persistSession: async () => undefined,
+      request: wire.request, readSession: async () => pair,
     });
     const consumed = wire.calls[1];
     const replay = await fetch(`${base}/auth/session-sync`, {
