@@ -10,7 +10,7 @@ export const FITNESS_HANDOFF_READINESS_CONTRACT_VERSION =
 export const FITNESS_HANDOFF_MASTER_PROJECT_REF = "bxtcuhkotumitoqtrcej";
 
 export const FITNESS_HANDOFF_ACTIVATION = Object.freeze({
-  fitnessConsumerMerge: "8c65b1c3a34fea064f85c0ef390f0cc4b0e32785",
+  fitnessConsumerMerge: "6727af070e0c1152d763901422b8a7d49df9b917",
   state: "active",
 } as const satisfies FitnessHandoffActivation);
 
