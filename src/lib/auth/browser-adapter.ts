@@ -170,6 +170,41 @@ function createBrowserBoundConfirmationState() {
   return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
 }
 
+export function createAuthGenerationCoordinator(
+  storage: BrowserAuthStorage,
+  durable = true,
+  createGeneration: () => string = createBrowserBoundConfirmationState,
+) {
+  const read = () => {
+    if (!durable) return null;
+    try {
+      const value = storage.getItem(accountContract.authGenerationKey);
+      return value && /^[a-f0-9]{64}$/.test(value) ? value : null;
+    } catch {
+      return null;
+    }
+  };
+  const advance = () => {
+    if (!durable) return null;
+    try {
+      const value = createGeneration();
+      if (!/^[a-f0-9]{64}$/.test(value)) return null;
+      storage.setItem(accountContract.authGenerationKey, value);
+      return value;
+    } catch {
+      return null;
+    }
+  };
+  if (!read()) advance();
+  return {
+    advance,
+    current: read,
+    matches(expected: string | null) {
+      return Boolean(expected && read() === expected);
+    },
+  };
+}
+
 function createSupabaseAdapter(
   url: string,
   publishableKey: string,
@@ -181,6 +216,14 @@ function createSupabaseAdapter(
 
   let authMutationEpoch = 0;
   const browserStorage = resolveBrowserAuthStorage();
+  const authGeneration = createAuthGenerationCoordinator(
+    browserStorage.storage,
+    browserStorage.durable,
+  );
+  const beginAuthMutation = () => {
+    authMutationEpoch += 1;
+    authGeneration.advance();
+  };
   const fitnessCommitFence = createFitnessCommitFencedStorage(
     browserStorage.storage,
     browserStorage.durable,
@@ -210,7 +253,7 @@ function createSupabaseAdapter(
       return () => data.subscription.unsubscribe();
     },
     async signIn(identifier, password) {
-      authMutationEpoch += 1;
+      beginAuthMutation();
       if (identifier.includes("@")) {
         const { data, error } = await client.auth.signInWithPassword({ email: identifier, password });
         if (error) throw error;
@@ -244,7 +287,7 @@ function createSupabaseAdapter(
       return toPortalSession(data.session);
     },
     async signUp(email, password, username, contextId) {
-      authMutationEpoch += 1;
+      beginAuthMutation();
       let confirmationState: string | undefined;
       if (contextId === "fitness") {
         if (!browserStorage.durable) {
@@ -287,7 +330,9 @@ function createSupabaseAdapter(
     },
     async handoffToFitness(returnTarget, expectedUserId) {
       const attemptEpoch = authMutationEpoch;
-      const isEpochCurrent = () => authMutationEpoch === attemptEpoch;
+      const attemptGeneration = authGeneration.current();
+      const isEpochCurrent = () => authMutationEpoch === attemptEpoch &&
+        authGeneration.matches(attemptGeneration);
       const isAttemptCurrent = async () => {
         if (!isEpochCurrent()) return false;
         const { data, error } = await client.auth.getSession();
@@ -311,7 +356,7 @@ function createSupabaseAdapter(
       });
     },
     async signOut() {
-      authMutationEpoch += 1;
+      beginAuthMutation();
       const { error } = await client.auth.signOut({ scope: "local" });
       if (error) throw error;
     },
@@ -322,21 +367,23 @@ function createSupabaseAdapter(
       if (error) throw error;
     },
     async updateEmail(email) {
+      beginAuthMutation();
       const { error } = await client.auth.updateUser({ email });
       if (error) throw error;
     },
     async updatePassword(password) {
+      beginAuthMutation();
       const { error } = await client.auth.updateUser({ password });
       if (error) throw error;
     },
     async confirm(tokenHash, type) {
-      authMutationEpoch += 1;
+      beginAuthMutation();
       const { data, error } = await client.auth.verifyOtp({ token_hash: tokenHash, type });
       if (error) throw error;
       return toPortalSession(data.session);
     },
     async exchangeCode(code) {
-      authMutationEpoch += 1;
+      beginAuthMutation();
       const { data, error } = await client.auth.exchangeCodeForSession(code);
       if (error) throw error;
       return toPortalSession(data.session);

@@ -1026,7 +1026,7 @@ function LinkHandler({
           return;
         }
         setReturnTo(payload.returnTo);
-        if (context.id === "fitness") {
+        if (isFitnessReturnTarget(payload.returnTo)) {
           let storedState: string | null = null;
           try {
             storedState = window.localStorage.getItem(accountContract.confirmationStateKey);

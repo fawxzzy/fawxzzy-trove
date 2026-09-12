@@ -41,8 +41,9 @@ Socials owns the portal producer.
    another child pair before redirect, because both products must retain the
    same final refresh lineage.
 
-Each portal handoff is bound to the current local Auth mutation epoch. Sign-out
-or a newer login invalidates the attempt. The portal checks the epoch and
+Each portal handoff is bound to the current local Auth mutation epoch and a
+same-origin cross-tab Auth generation. Sign-out, account mutation, or a newer
+login invalidates the attempt before its shared session write. The portal checks the epoch and
 expected user before accepting the consume result, again immediately before
 local persistence, and again before navigation. The browser Auth storage adapter
 also fences the exact returned access-token write, so an epoch change during the

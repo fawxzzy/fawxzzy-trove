@@ -60,6 +60,7 @@ export const accountContract = {
     "http://127.0.0.1:4313",
   ],
   storageKey: "fawxzzy.account.auth.v1",
+  authGenerationKey: "fawxzzy.account.auth-generation.v1",
   rememberedIdentityKey: "fawxzzy.account.remembered-identity.v1",
   callbackStateKey: "fawxzzy.account.callback.state.v1",
   callbackReceiptPrefix: "fawxzzy.account.callback.receipt.v1",

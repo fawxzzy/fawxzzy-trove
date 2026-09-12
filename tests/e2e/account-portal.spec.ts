@@ -1563,15 +1563,17 @@ test("Fitness confirmation fails closed when its secure session handoff cannot c
   await expect(page).toHaveURL(/\/auth\/confirm$/);
 });
 
-test("Fitness confirmation rejects a link forwarded to another browser", async ({ page }) => {
-  await page.goto(
-    "/auth/confirm?app=fitness&auth_test=success&token_hash=private-hash&type=signup&state=forwarded-state&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F",
-  );
-  await expect(page.locator('[data-auth-state="unauthorized"] [role="alert"]')).toContainText(
-    "does not match the browser that started it",
-  );
-  await expect(page.getByRole("link", { name: "Continue safely" })).toHaveCount(0);
-  await expect(page).toHaveURL(/\/auth\/confirm$/);
+test("Fitness confirmation binding follows its destination despite presentation query drift", async ({ page }) => {
+  for (const appQuery of ["", "&app=website", "&app=unknown", "&app=website&app=fitness"]) {
+    await page.goto(
+      `/auth/confirm?auth_test=success&token_hash=private-hash&type=signup&state=forwarded-state&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F${appQuery}`,
+    );
+    await expect(page.locator('[data-auth-state="unauthorized"] [role="alert"]')).toContainText(
+      "does not match the browser that started it",
+    );
+    await expect(page.getByRole("link", { name: "Continue safely" })).toHaveCount(0);
+    await expect(page).toHaveURL(/\/auth\/confirm$/);
+  }
 });
 
 test("confirmation fallback actions preserve the selected product context", async ({ page }) => {

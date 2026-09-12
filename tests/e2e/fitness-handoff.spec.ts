@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  createAuthGenerationCoordinator,
   createFitnessCommitFencedStorage,
   persistVerifiedFitnessSession,
   resolveBrowserAuthStorage,
@@ -283,6 +284,52 @@ test("an Auth epoch change fences the delayed SDK storage commit itself", async 
   await expect(persistence).rejects.toThrow(FITNESS_HANDOFF_UNAVAILABLE);
   expect(writes).toEqual([]);
   expect(stored.size).toBe(0);
+});
+
+test("a two-tab Auth generation change fences the final shared session write", async () => {
+  const stored = new Map<string, string>();
+  const sessionWrites: string[] = [];
+  const storage = {
+    getItem: (key: string) => stored.get(key) ?? null,
+    removeItem: (key: string) => { stored.delete(key); },
+    setItem: (key: string, value: string) => {
+      if (key === "session") sessionWrites.push(value);
+      stored.set(key, value);
+    },
+  };
+  let generation = 0;
+  const nextGeneration = () => (++generation).toString(16).padStart(64, "0");
+  const firstTab = createAuthGenerationCoordinator(storage, true, nextGeneration);
+  const secondTab = createAuthGenerationCoordinator(storage, true, nextGeneration);
+  const startingGeneration = firstTab.current();
+  const fence = createFitnessCommitFencedStorage(storage);
+  let releaseSdkLookup!: () => void;
+  const sdkLookup = new Promise<void>((resolve) => { releaseSdkLookup = resolve; });
+  const auth = {
+    async getUser() {
+      return { data: { user: { id: "expected-user" } }, error: null };
+    },
+    async setSession(session: { access_token: string; refresh_token: string }) {
+      await sdkLookup;
+      fence.storage.setItem("session", JSON.stringify(session));
+      return { data: { session: { user: { id: "expected-user" } } }, error: null };
+    },
+  };
+  const persistence = fence.run(
+    rotatedPair.accessToken,
+    () => firstTab.matches(startingGeneration),
+    () => persistVerifiedFitnessSession(
+      auth,
+      rotatedPair,
+      "expected-user",
+      () => firstTab.matches(startingGeneration),
+    ),
+  );
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  secondTab.advance();
+  releaseSdkLookup();
+  await expect(persistence).rejects.toThrow(FITNESS_HANDOFF_UNAVAILABLE);
+  expect(sessionWrites).toEqual([]);
 });
 
 test("the storage fence performs its final epoch comparison synchronously", async () => {
