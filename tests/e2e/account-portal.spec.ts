@@ -1502,7 +1502,7 @@ test("recovery exchanges PKCE before exposing the password form", async ({ brows
 
 test("confirmation is one-time, sanitized, and preserves only an approved return", async ({ page }) => {
   await page.goto(
-    "/auth/confirm?auth_test=success&token_hash=private-hash&type=signup&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F",
+    "/auth/confirm?app=fitness&auth_test=success&token_hash=private-hash&type=signup&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F",
   );
   await expect(page.getByRole("status")).toContainText("Confirmation complete.");
   await expect(page).toHaveURL(/\/auth\/confirm$/);
@@ -1510,6 +1510,17 @@ test("confirmation is one-time, sanitized, and preserves only an approved return
     "href",
     "https://fitness.fawxzzy.com/",
   );
+});
+
+test("Fitness confirmation fails closed when its secure session handoff cannot complete", async ({ page }) => {
+  await page.goto(
+    "/auth/confirm?app=fitness&auth_test=fitness-handoff-error&token_hash=private-hash&type=signup&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2F",
+  );
+  await expect(page.locator('[data-auth-state="recoverable-error"] [role="alert"]')).toContainText(
+    "Fitness connection unavailable",
+  );
+  await expect(page.getByRole("link", { name: "Continue safely" })).toHaveCount(0);
+  await expect(page).toHaveURL(/\/auth\/confirm$/);
 });
 
 test("confirmation fallback actions preserve the selected product context", async ({ page }) => {
@@ -1543,6 +1554,33 @@ test("callback validates state, exchanges once, and never retains token material
   await expect(page.locator('[data-auth-state="invalid"] [role="alert"]')).toContainText(
     "missing a valid authorization handoff",
   );
+  await expect(page).toHaveURL(/\/auth\/callback$/);
+});
+
+test("Fitness callbacks establish the secure consumer session before returning", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate((key) => window.sessionStorage.setItem(key, "fitness-state"), accountContract.callbackStateKey);
+  await page.goto(
+    "/auth/callback?app=fitness&auth_test=success&code=fitness-code&state=fitness-state&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2Ftoday",
+  );
+  await expect(page.getByRole("status")).toContainText("Sign-in handoff complete.");
+  await expect(page.getByRole("link", { name: "Continue safely" })).toHaveAttribute(
+    "href",
+    "https://fitness.fawxzzy.com/today",
+  );
+});
+
+test("Fitness callbacks do not redirect when the secure consumer session fails", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate((key) => window.sessionStorage.setItem(key, "fitness-state"), accountContract.callbackStateKey);
+  await page.goto(
+    "/auth/callback?app=fitness&auth_test=fitness-handoff-error&code=fitness-code&state=fitness-state&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2Ftoday",
+  );
+  await expect(page.locator('[data-auth-state="recoverable-error"] [role="alert"]')).toContainText(
+    "Fitness connection unavailable",
+  );
+  await expect(page).toHaveURL(/\/auth\/callback$/);
+  await page.waitForTimeout(1_500);
   await expect(page).toHaveURL(/\/auth\/callback$/);
 });
 

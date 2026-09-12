@@ -171,6 +171,25 @@ function contextualPath(path: string, context: AccountExperienceContext) {
   return `${url.pathname}${url.search}`;
 }
 
+function isFitnessReturnTarget(target: string) {
+  try {
+    return new URL(sanitizeReturnTarget(target)).origin ===
+      new URL(accountContract.productOrigins.fitness).origin;
+  } catch {
+    return false;
+  }
+}
+
+async function completeAuthenticatedReturn(
+  adapter: PortalAuthAdapter,
+  target: string,
+  session: PortalSession | null,
+) {
+  if (!isFitnessReturnTarget(target)) return sanitizeReturnTarget(target);
+  if (!session) throw new FitnessHandoffError();
+  return adapter.handoffToFitness(target, session.userId);
+}
+
 function AuthLiveNotice({ notice }: { notice: Notice | null }) {
   if (!notice) return null;
   return (
@@ -1000,8 +1019,19 @@ function LinkHandler({
         }
         adapter
           .confirm(payload.tokenHash, payload.type)
-          .then(() => setNotice({ kind: "success", text: "Confirmation complete." }))
-          .catch(() => setNotice({ kind: "error", text: safeAuthError("confirm") }));
+          .then(async (session) => {
+            const destination = await completeAuthenticatedReturn(
+              adapter,
+              payload.returnTo,
+              session,
+            );
+            setReturnTo(destination);
+            setNotice({ kind: "success", text: "Confirmation complete." });
+          })
+          .catch((error) => setNotice({
+            kind: "error",
+            text: error instanceof FitnessHandoffError ? error.message : safeAuthError("confirm"),
+          }));
         return;
       }
 
@@ -1041,13 +1071,22 @@ function LinkHandler({
       }
       adapter
         .exchangeCode(payload.code)
-        .then(() => {
+        .then(async (session) => {
+          const destination = await completeAuthenticatedReturn(
+            adapter,
+            payload.returnTo,
+            session,
+          );
           window.sessionStorage.setItem(receipt, "complete");
           window.sessionStorage.removeItem(accountContract.callbackStateKey);
+          setReturnTo(destination);
           setNotice({ kind: "success", text: "Sign-in handoff complete." });
-          scheduleRedirect(payload.returnTo);
+          scheduleRedirect(destination);
         })
-        .catch(() => setNotice({ kind: "error", text: safeAuthError("callback") }));
+        .catch((error) => setNotice({
+          kind: "error",
+          text: error instanceof FitnessHandoffError ? error.message : safeAuthError("callback"),
+        }));
     });
 
     return () => {
