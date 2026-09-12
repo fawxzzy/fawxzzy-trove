@@ -1071,6 +1071,33 @@ test("signup enforces ten characters and accepts long passwords", async ({ brows
   await expect(page.getByRole("status")).toContainText("account request is complete");
 });
 
+test("a session-bearing Fitness signup completes the secure consumer handoff", async ({ page }) => {
+  await page.goto("/login?app=fitness&auth_test=success&returnTo=https%3A%2F%2Ffitness.fawxzzy.com%2Ftoday");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByLabel("Username").fill("new.fitness.user");
+  await page.getByLabel("Email").fill("new.fitness.user@example.test");
+  await page.getByLabel("Password", { exact: true }).fill("correct-horse-battery-staple");
+  await page.locator(".account-auth-dock").getByRole("button", { name: "Create account" }).click();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-post-auth-destination",
+    "https://fitness.fawxzzy.com/today",
+  );
+  await expect(page.getByRole("status")).toContainText(safeAuthSuccess("signup"));
+});
+
+test("a Fitness signup never reports success when its consumer handoff fails", async ({ page }) => {
+  await page.goto("/login?app=fitness&auth_test=fitness-handoff-error");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByLabel("Username").fill("new.fitness.user");
+  await page.getByLabel("Email").fill("new.fitness.user@example.test");
+  await page.getByLabel("Password", { exact: true }).fill("correct-horse-battery-staple");
+  await page.locator(".account-auth-dock").getByRole("button", { name: "Create account" }).click();
+  await expect(page.locator('.account-auth-live-notice[role="alert"]')).toContainText(
+    "Fitness connection unavailable",
+  );
+  await expect(page.locator("html")).not.toHaveAttribute("data-post-auth-destination", /.+/);
+});
+
 test("signup validation stops before the provider call", async ({ browserName, page }) => {
   test.slow(browserName === "webkit", "Mobile WebKit needs a longer native actionability budget.");
   await page.goto("/login?auth_test=signup-existing");

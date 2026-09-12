@@ -404,6 +404,22 @@ function LoginPanel({
           const identity = session.displayName || submittedUsername;
           writeRememberedIdentity(identity);
           setRememberedIdentity(identity);
+          if (context.id === "fitness") {
+            const destinationUrl = new URL(
+              sanitizeContextReturnTarget(
+                new URLSearchParams(window.location.search).get("returnTo"),
+                context,
+              ),
+            );
+            const destination = await adapter.handoffToFitness(destinationUrl.href, session.userId);
+            transient.show({ kind: "success", text: safeAuthSuccess("signup") });
+            if (classifyRuntimeOrigin(window.location.origin) === "local-test") {
+              document.documentElement.dataset.postAuthDestination = destination;
+            } else {
+              window.location.assign(destination);
+            }
+            return;
+          }
         }
         transient.show({ kind: "success", text: safeAuthSuccess("signup") });
         return;
