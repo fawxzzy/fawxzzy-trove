@@ -12,7 +12,7 @@ import {
 import { isBrowserSafeSupabasePublicKey } from "@/lib/auth/supabase-public-key.mjs";
 import {
   completeFitnessHandoff, fitnessReturnPath, FitnessHandoffError,
-  FITNESS_HANDOFF_RUNTIME_READY,
+  fitnessHandoffRuntimeReady,
 } from "@/lib/auth/fitness-handoff";
 
 export type PortalSession = {
@@ -149,7 +149,7 @@ export async function persistVerifiedFitnessSession(
 }
 
 export type PortalAuthAdapterDependencies = {
-  createLiveAdapter(url: string, publishableKey: string): PortalAuthAdapter;
+  createLiveAdapter(url: string, publishableKey: string, runtimeOrigin: string): PortalAuthAdapter;
   readPublicConfig(): PublicAuthConfig | null;
 };
 
@@ -164,7 +164,11 @@ function toPortalSession(session: Session | null): PortalSession | null {
   return { displayName, email: session.user.email ?? null, userId: session.user.id };
 }
 
-function createSupabaseAdapter(url: string, publishableKey: string): PortalAuthAdapter {
+function createSupabaseAdapter(
+  url: string,
+  publishableKey: string,
+  runtimeOrigin: string,
+): PortalAuthAdapter {
   if (!isBrowserSafeSupabasePublicKey(publishableKey)) {
     throw new Error("Shared account services are not connected on this deployment yet.");
   }
@@ -256,7 +260,7 @@ function createSupabaseAdapter(url: string, publishableKey: string): PortalAuthA
           isEpochCurrent();
       };
       return completeFitnessHandoff(returnTarget, {
-        enabled: FITNESS_HANDOFF_RUNTIME_READY,
+        enabled: fitnessHandoffRuntimeReady(runtimeOrigin),
         async persistSession(session) {
           await fitnessCommitFence.run(session.accessToken, isEpochCurrent, () =>
             persistVerifiedFitnessSession(client.auth, session, expectedUserId, isAttemptCurrent));
@@ -475,10 +479,14 @@ export function resolvePortalAuthAdapter(
   if (dependencies !== defaultDependencies) {
     return {
       status: "ready",
-      adapter: dependencies.createLiveAdapter(config.url, config.publishableKey),
+      adapter: dependencies.createLiveAdapter(config.url, config.publishableKey, location.origin),
     };
   }
 
-  supabaseAdapter ??= dependencies.createLiveAdapter(config.url, config.publishableKey);
+  supabaseAdapter ??= dependencies.createLiveAdapter(
+    config.url,
+    config.publishableKey,
+    location.origin,
+  );
   return { status: "ready", adapter: supabaseAdapter };
 }

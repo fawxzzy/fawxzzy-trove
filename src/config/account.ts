@@ -70,8 +70,9 @@ export const accountContract = {
  * legal destinations, and the eventual allowlisted return destination. They
  * never select an Auth provider, callback, session, or credential boundary.
  * Every registered presentation is safe to render on the account host. Fitness
- * and Mazer consumer integration remains pending until their owner repositories
- * adopt the broker contract from reviewed exact heads.
+ * Fitness consumer integration is active only through the separately
+ * source-bound runtime activation contract. Mazer remains pending until its
+ * owner repository adopts the broker contract from a reviewed exact head.
  */
 export const accountExperienceContexts: Record<
   AccountExperienceContextId,
@@ -90,7 +91,7 @@ export const accountExperienceContexts: Record<
   },
   fitness: {
     accentRgb: "160 223 56",
-    consumerIntegration: "pending",
+    consumerIntegration: "active",
     destinationOrigin: accountContract.productOrigins.fitness,
     id: "fitness",
     legalLinks: [

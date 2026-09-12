@@ -72,11 +72,14 @@ an injected in-memory fixture is not a deployable implementation. A boolean or
 provider config value alone is not readiness proof. Cross-origin CORS must not
 weaken Fitness's separate same-origin mirror or DELETE policy.
 
-`FITNESS_HANDOFF_RUNTIME_READY` remains false until a separately reviewed
-activation binds the implemented consumer, atomic-store concurrency/restart
-proof and authoritative master Auth/data production postimage. Local adapters
-never transmit synthetic credentials to live services. Website and Mazer
-continuations remain unchanged by this Fitness-only source cluster.
+The production activation is source-bound to the reviewed Fitness consumer,
+the accepted 26/26/52 master data postimage, and the installed atomic handoff
+store. The live adapter enables the handoff only when all exact identities are
+present and the runtime origin is `https://account.fawxzzy.com`; local, preview,
+foreign, malformed, and evidence-drifted runtimes fail closed before reading
+credentials or sending a request. Local adapters never transmit synthetic
+credentials to live services. Website and Mazer continuations remain unchanged
+by this Fitness-only activation.
 
 Acceptance must cover native login and portal sign-in, Fitness cookie creation,
 entry, first authenticated data read, navigation, refresh persistence and

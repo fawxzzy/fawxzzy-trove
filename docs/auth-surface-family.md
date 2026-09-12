@@ -47,7 +47,7 @@ The family requires 44px minimum interactive targets, visible keyboard focus, no
 - Desktop and mobile: the same bounded one-column Fitness-shaped frame.
 - The remembered username is stored as optional local presentation state after a successful session and never becomes authentication authority.
 - Current service boundary: account actions remain visibly unavailable unless the approved adapter resolves at runtime.
-- Current implementation status: the account host renders Website, Fitness, and Mazer presentation contexts from one registry. Fitness and Mazer consumer integration remains pending until their owner repositories adopt the broker contract from reviewed exact heads.
+- Current implementation status: the account host renders Website, Fitness, and Mazer presentation contexts from one registry. Fitness consumer integration is active through an exact source-bound readiness contract; Mazer remains pending until its owner repository adopts the broker contract from a reviewed exact head.
 
 ### Fitness
 

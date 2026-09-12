@@ -90,13 +90,13 @@ test("auth-family documentation locks Fitness structure and product-owned themin
   expect(contract).not.toContain("one short supporting sentence");
 });
 
-test("one presentation registry renders every product without claiming consumer adoption", () => {
+test("one presentation registry renders every product with exact consumer adoption", () => {
   expect(resolveAccountExperienceContext("website")).toEqual(accountExperienceContexts.website);
   expect(resolveAccountExperienceContext("fitness")).toEqual(accountExperienceContexts.fitness);
   expect(resolveAccountExperienceContext("mazer")).toEqual(accountExperienceContexts.mazer);
   expect(resolveAccountExperienceContext("unknown")).toEqual(accountExperienceContexts.website);
   expect(accountExperienceContexts.website.consumerIntegration).toBe("active");
-  expect(accountExperienceContexts.fitness.consumerIntegration).toBe("pending");
+  expect(accountExperienceContexts.fitness.consumerIntegration).toBe("active");
   expect(accountExperienceContexts.mazer.consumerIntegration).toBe("pending");
   expect(accountExperienceContexts.fitness.legalLinks).toEqual([
     { href: "https://fitness.fawxzzy.com/privacy", label: "Privacy Policy" },

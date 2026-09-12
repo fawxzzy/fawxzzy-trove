@@ -1,6 +1,50 @@
-import { accountContract } from "@/config/account";
+import { accountContract, accountExperienceContexts } from "@/config/account";
 
-export const FITNESS_HANDOFF_RUNTIME_READY = false;
+export type FitnessHandoffActivation = Readonly<{
+  fitnessConsumerMerge: string;
+  fitnessConsumerReceiptSha256: string;
+  r101TerminalSha256: string;
+  state: "active" | "inactive";
+  w10ExecutionSha256: string;
+  w10SettlementSha256: string;
+}>;
+
+const requiredActivation = {
+  fitnessConsumerMerge: "1d6c5ad54d61ea0d1b3d5a51eb4b939ccb2ed2a3",
+  fitnessConsumerReceiptSha256: "be616b7f9c75a705e9e0c2a73f84ede64799ed3373360892b2dc9b1625838007",
+  r101TerminalSha256: "d967e2beebd40bd59f7237024ff3064f232a899b1c1cef555c20542dda239f47",
+  state: "active",
+  w10ExecutionSha256: "ea5bcf7a1322827923036f06de50f6ca6834bcc778129a047a10f339cbbf1f39",
+  w10SettlementSha256: "0043d87c72573185b859b3b767efe7e4b5b8353a33135f2219ecb23022c2392a",
+} as const satisfies FitnessHandoffActivation;
+
+/**
+ * Production activation is source-bound to the reviewed Fitness consumer and
+ * accepted master data/store postimages. It remains closed on preview, local,
+ * foreign, malformed, or evidence-drifted runtimes.
+ */
+export const FITNESS_HANDOFF_ACTIVATION = Object.freeze({ ...requiredActivation });
+
+export function fitnessHandoffRuntimeReady(
+  runtimeOrigin: string,
+  activation: FitnessHandoffActivation = FITNESS_HANDOFF_ACTIVATION,
+): boolean {
+  try {
+    const candidate = new URL(runtimeOrigin);
+    return candidate.origin === accountContract.canonicalOrigin
+      && !candidate.username && !candidate.password
+      && accountExperienceContexts.fitness.consumerIntegration === "active"
+      && activation.state === requiredActivation.state
+      && activation.fitnessConsumerMerge === requiredActivation.fitnessConsumerMerge
+      && activation.fitnessConsumerReceiptSha256 === requiredActivation.fitnessConsumerReceiptSha256
+      && activation.r101TerminalSha256 === requiredActivation.r101TerminalSha256
+      && activation.w10ExecutionSha256 === requiredActivation.w10ExecutionSha256
+      && activation.w10SettlementSha256 === requiredActivation.w10SettlementSha256;
+  } catch {
+    return false;
+  }
+}
+
 export const FITNESS_HANDOFF_UNAVAILABLE =
   "Account signed in. Fitness connection unavailable.";
 

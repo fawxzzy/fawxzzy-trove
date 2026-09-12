@@ -6,8 +6,8 @@ import {
   resolvePortalAuthAdapter,
 } from "../../src/lib/auth/browser-adapter";
 import {
-  completeFitnessHandoff, fitnessReturnPath, FITNESS_HANDOFF_RUNTIME_READY,
-  FITNESS_HANDOFF_UNAVAILABLE,
+  completeFitnessHandoff, fitnessHandoffRuntimeReady, fitnessReturnPath,
+  FITNESS_HANDOFF_ACTIVATION, FITNESS_HANDOFF_UNAVAILABLE,
 } from "../../src/lib/auth/fitness-handoff";
 
 const id = "a".repeat(43);
@@ -32,8 +32,30 @@ function fixture(responses: Response[]) {
   return { calls, request };
 }
 
-test("Fitness handoff is disabled for production preparation without any credential read or request", async () => {
-  expect(FITNESS_HANDOFF_RUNTIME_READY).toBe(false);
+test("Fitness handoff activates only on the canonical account runtime with exact evidence", () => {
+  expect(fitnessHandoffRuntimeReady("https://account.fawxzzy.com")).toBe(true);
+  for (const runtimeOrigin of [
+    "http://127.0.0.1:3210",
+    "https://fawxzzyweb-preview.vercel.app",
+    "https://evil.test",
+    "not a URL",
+  ]) {
+    expect(fitnessHandoffRuntimeReady(runtimeOrigin)).toBe(false);
+  }
+
+  for (const activation of [
+    { ...FITNESS_HANDOFF_ACTIVATION, state: "inactive" as const },
+    { ...FITNESS_HANDOFF_ACTIVATION, fitnessConsumerMerge: "0".repeat(40) },
+    { ...FITNESS_HANDOFF_ACTIVATION, fitnessConsumerReceiptSha256: "0".repeat(64) },
+    { ...FITNESS_HANDOFF_ACTIVATION, r101TerminalSha256: "0".repeat(64) },
+    { ...FITNESS_HANDOFF_ACTIVATION, w10ExecutionSha256: "0".repeat(64) },
+    { ...FITNESS_HANDOFF_ACTIVATION, w10SettlementSha256: "0".repeat(64) },
+  ]) {
+    expect(fitnessHandoffRuntimeReady("https://account.fawxzzy.com", activation)).toBe(false);
+  }
+});
+
+test("inactive Fitness handoff fails before any credential read or request", async () => {
   let reads = 0;
   const f = fixture([]);
   await expect(completeFitnessHandoff("/today", {
