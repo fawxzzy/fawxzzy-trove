@@ -34,6 +34,7 @@ import {
   type PortalSession,
 } from "@/lib/auth/browser-adapter";
 import { PASSWORD_MINIMUM, validatePassword } from "@/lib/auth/password-policy";
+import { FitnessHandoffError } from "@/lib/auth/fitness-handoff";
 import {
   SystemState,
   type SystemStateVariant,
@@ -395,11 +396,7 @@ function LoginPanel({
         writeRememberedIdentity(identity);
         setRememberedIdentity(identity);
       }
-      transient.show(
-        session
-          ? { kind: "success", text: "Signed in on this account origin." }
-          : { kind: "error", text: safeAuthError("login") },
-      );
+      if (!session) transient.show({ kind: "error", text: safeAuthError("login") });
       if (session) {
         const destinationUrl = new URL(
           sanitizeContextReturnTarget(
@@ -408,15 +405,18 @@ function LoginPanel({
           ),
         );
         if (context.id === "website") destinationUrl.searchParams.set("signedIn", "1");
-        const destination = destinationUrl.href;
+        const destination = context.id === "fitness"
+          ? await adapter.handoffToFitness(destinationUrl.href, session.userId)
+          : destinationUrl.href;
+        transient.show({ kind: "success", text: "Signed in on this account origin." });
         if (classifyRuntimeOrigin(window.location.origin) === "local-test") {
           document.documentElement.dataset.postAuthDestination = destination;
         } else {
           window.location.assign(destination);
         }
       }
-    } catch {
-      transient.show({ kind: "error", text: safeAuthError(intent) });
+    } catch (error) {
+      transient.show({ kind: "error", text: error instanceof FitnessHandoffError ? error.message : safeAuthError(intent) });
     } finally {
       setBusy(false);
     }

@@ -1,0 +1,92 @@
+# Fitness session handoff v1 (source preparation)
+
+Status: disabled in deployed-runtime code. No database, provider, credential,
+or production changes are made by this source candidate. Fitness owns the
+consumer and durable challenge store. Socials owns the portal producer.
+
+## Wire contract
+
+1. After successful portal authentication, POST JSON `{returnTo}` to
+   `https://fitness.fawxzzy.com/auth/session-handoff`, credentials included.
+   The only permitted return paths are `/`, `/entry`, `/today`; others normalize
+   to `/entry`. No queries, fragments, foreign origins or backslashes.
+2. Fitness must first prove its active master Auth/data binding and a durable
+   atomic store. Unknown readiness returns unavailable without cookies/CORS.
+3. Fitness creates a random 32-byte browser binding and independent random
+   32-byte ID (43 base64url characters), with a server-enforced lifetime <=60s.
+   Store the binding hash, ID, exact portal origin, `fitness` audience, issuer
+   `https://bxtcuhkotumitoqtrcej.supabase.co/auth/v1`, expiry and normalized path.
+   Set `__Host-fitness-handoff`: HttpOnly, Secure, SameSite=Lax, Path=/,
+   Max-Age=60, no Domain. Return exactly `{ok:true,handoffId,returnTo}`.
+4. Portal retrieves the current session from its existing Supabase client,
+   checks the expected user has not changed, then POSTs
+   `{handoffId,accessToken,refreshToken}` to Fitness `/auth/session-sync`.
+   The handoff does not explicitly call refreshSession or separately re-issue
+   credentials. Normal SDK renewal during getSession remains allowed; forward
+   the SDK-returned current pair unchanged. Do not copy it into UI state, log
+   it, or put credentials in any URL.
+5. Fitness validates exact origin and binding, atomically consumes the challenge
+   once, validates the session pair against master, then writes its HttpOnly
+   session cookies and returns exactly `{ok:true,returnTo}` from the stored path.
+   The portal redirects only after validating this success response.
+
+Both POSTs use explicit JSON, credentialed CORS, no-store, no referrer, error on
+redirect, a 10s request deadline and zero automatic retries. Invalid response
+shapes, expired/replayed/mismatched challenges, invalid sessions, timeouts and
+non-2xx responses fail closed without a redirect. Users keep the account-origin
+session and receive a safe connection error. A manual new attempt requires a
+new challenge, never replay. Missing/blocked cookies must fail consume.
+
+Both sides cap each token at 4,096 characters and the complete serialized JSON
+request at 8,192 UTF-8 bytes, including field names and the challenge ID. The
+portal checks these limits before sending the consume request; independent
+per-token limits do not override the combined body limit. Fitness enforces MIME,
+declared size and streamed size before invoking its store or Auth validator.
+
+## Boundaries and acceptance
+
+The portal is statically exported: do not invent a Next server route or a
+Supabase provider mutation here. Fitness owns the real atomic consume adapter;
+an injected in-memory fixture is not a deployable implementation. A boolean or
+provider config value alone is not readiness proof. Cross-origin CORS must not
+weaken Fitness's separate same-origin mirror or DELETE policy.
+
+`FITNESS_HANDOFF_RUNTIME_READY` remains false until a separately reviewed
+activation binds the implemented consumer, atomic-store concurrency/restart
+proof and authoritative master Auth/data production postimage. Local adapters
+never transmit synthetic credentials to live services. Website and Mazer
+continuations remain unchanged by this Fitness-only source cluster.
+
+Acceptance must cover native login and portal sign-in, Fitness cookie creation,
+entry, first authenticated data read, navigation, refresh persistence and
+sign-out on desktop and standalone mobile. Test replay, concurrent consumption,
+expiry, denied cookies, hostile origins/returns, malformed results, and data
+errors without session clearing. PR181 must actually be in the deployed Fitness
+artifact; passing local tests is not a production outage fix.
+
+Rule: dependency readiness gates runtime activation, not isolated source and
+fixture preparation. Never report a disabled candidate as a working login.
+
+## Joint durable-store integration
+
+`tests/e2e/fitness-handoff-integration.spec.ts` joins the actual portal producer
+to the Fitness-owned local receiver and persistent store. Set
+`FITNESS_HANDOFF_INTEGRATION_ORIGIN` to an explicit `http://127.0.0.1:<port>`
+fixture; other hosts, credentials, paths, queries and fragments are rejected.
+The fixture must attest `fitness-handoff-local-integration-v1` synthetic mode
+before any test sends the fixed synthetic session pair. No production request
+override or activation is added to the application.
+
+The integration tests cover begin-before-session retrieval, binding-cookie
+transfer, consume-before-navigation, missing binding, and replay after success.
+They are skipped when the fixture is absent; skipped tests are not acceptance.
+Fitness's actual store tests must separately prove concurrent consume and
+process-restart persistence. The fixture attestation alone is not proof of
+durability. Even a passing local join does not prove real browser cookie policy,
+master Auth validation, production backend installation or existing-user data
+access; those remain explicit release acceptance requirements.
+
+Supabase session retrieval reference:
+https://supabase.com/docs/reference/javascript/auth-getsession
+The retrieved pair is only transport input; Fitness must independently verify
+the session, not trust browser-stored user claims.
